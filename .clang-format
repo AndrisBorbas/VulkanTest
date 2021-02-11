@@ -1,6 +1,6 @@
 ---
 Language: Cpp
-BasedOnStyle: LLVM
+BasedOnStyle: Chromium
 AccessModifierOffset: -4
 AlignConsecutiveAssignments: true
 AllowShortIfStatementsOnASingleLine: WithoutElse
@@ -25,8 +25,8 @@ ColumnLimit: 120
 IndentCaseLabels: true
 IndentWidth: 4
 TabWidth: 4
-UseTab: AlignWithSpaces
----
-Language: JavaScript
-BasedOnStyle: LLVM
+UseTab: ForContinuationAndIndentation
+DerivePointerAlignment: false
+PointerAlignment: Left
+Standard: c++20
 ...
