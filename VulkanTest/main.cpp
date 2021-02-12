@@ -426,6 +426,7 @@ private:
 			throw std::runtime_error("failed to create logical device!");
 		}
 
+		device.getQueue(indices.graphicsFamily.value(), 0, &graphicsQueue);
 		device.getQueue(indices.presentFamily.value(), 0, &presentQueue);
 	}
 
