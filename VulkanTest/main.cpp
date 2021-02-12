@@ -32,7 +32,7 @@ const uint32_t HEIGHT = 600;
 const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-const vk::PresentModeKHR preferredPresentMode = vk::PresentModeKHR::eImmediate;
+const vk::PresentModeKHR preferredPresentMode = vk::PresentModeKHR::eMailbox;
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -91,7 +91,17 @@ private:
 	vk::Format swapChainImageFormat;
 	vk::Extent2D swapChainExtent;
 
+	vk::RenderPass renderPass;
 	vk::PipelineLayout pipelineLayout;
+	vk::Pipeline graphicsPipeline;
+
+	std::vector<vk::Framebuffer> swapChainFramebuffers;
+
+	vk::CommandPool commandPool;
+	std::vector<vk::CommandBuffer> commandBuffers;
+
+	vk::Semaphore imageAvailableSemaphore;
+	vk::Semaphore renderFinishedSemaphore;
 
 	struct QueueFamilyIndices
 	{
@@ -130,7 +140,14 @@ private:
 		createSwapChain();
 		createImageViews();
 
+		createRenderPass();
 		createGraphicsPipeline();
+
+		createFramebuffers();
+		createCommandPool();
+		createCommandBuffers();
+
+		createSemaphores();
 	}
 
 	void setupDebugMessenger()
@@ -139,20 +156,20 @@ private:
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 		populateDebugMessengerCreateInfo(createInfo);
 
-		if (CreateDebugUtilsMessengerEXT(&instance, &createInfo, nullptr, &debugMessenger) !=
-			vk::Result::eSuccess) {
+		if (CreateDebugUtilsMessengerEXT(&instance, &createInfo, nullptr, &debugMessenger)
+			!= vk::Result::eSuccess) {
 			throw std::runtime_error("failed to set up debug messenger!");
 		}
 	}
 
 	void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo)
 	{
-		createInfo = {.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-										 vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-										 vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-					  .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-									 vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
-									 vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+		createInfo = {.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+										 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+										 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+					  .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+									 | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+									 | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
 					  .pfnUserCallback = debugCallback};
 	}
 
@@ -438,8 +455,8 @@ private:
 
 		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 
-		if (swapChainSupport.capabilities.maxImageCount > 0 &&
-			imageCount > swapChainSupport.capabilities.maxImageCount) {
+		if (swapChainSupport.capabilities.maxImageCount > 0
+			&& imageCount > swapChainSupport.capabilities.maxImageCount) {
 			imageCount = swapChainSupport.capabilities.maxImageCount;
 		}
 
@@ -513,8 +530,8 @@ private:
 	vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
 	{
 		for (const auto& availableFormat : availableFormats) {
-			if (availableFormat.format == vk::Format::eB8G8R8A8Srgb &&
-				availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+			if (availableFormat.format == vk::Format::eB8G8R8A8Srgb
+				&& availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
 				return availableFormat;
 			}
 		}
@@ -581,8 +598,8 @@ private:
 			createInfo.subresourceRange.baseArrayLayer = 0;
 			createInfo.subresourceRange.layerCount     = 1;
 
-			if (device.createImageView(&createInfo, nullptr, &swapChainImageViews[i]) !=
-				vk::Result::eSuccess) {
+			if (device.createImageView(&createInfo, nullptr, &swapChainImageViews[i])
+				!= vk::Result::eSuccess) {
 				throw std::runtime_error("failed to create image views!");
 			}
 		}
@@ -656,8 +673,8 @@ private:
 			.srcAlphaBlendFactor = vk::BlendFactor::eOne,
 			.dstAlphaBlendFactor = vk::BlendFactor::eZero,
 			.alphaBlendOp        = vk::BlendOp::eAdd,
-			.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-							  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+			.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+							  | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
 
 		vk::PipelineColorBlendStateCreateInfo colorBlending{.logicOpEnable   = VK_FALSE,
 															.logicOp         = vk::LogicOp::eCopy,
@@ -678,9 +695,30 @@ private:
 														.pushConstantRangeCount = 0,
 														.pPushConstantRanges    = nullptr};
 
-		if (device.createPipelineLayout(&pipelineLayoutInfo, nullptr, &pipelineLayout) !=
-			vk::Result::eSuccess) {
+		if (device.createPipelineLayout(&pipelineLayoutInfo, nullptr, &pipelineLayout)
+			!= vk::Result::eSuccess) {
 			throw std::runtime_error("failed to create pipeline layout!");
+		}
+
+		vk::GraphicsPipelineCreateInfo pipelineInfo{.stageCount          = 2,
+													.pStages             = shaderStages,
+													.pVertexInputState   = &vertexInputInfo,
+													.pInputAssemblyState = &inputAssembly,
+													.pViewportState      = &viewportState,
+													.pRasterizationState = &rasterizer,
+													.pMultisampleState   = &multisampling,
+													.pDepthStencilState  = nullptr,
+													.pColorBlendState    = &colorBlending,
+													.pDynamicState       = nullptr,
+													.layout              = pipelineLayout,
+													.renderPass          = renderPass,
+													.subpass             = 0,
+													.basePipelineHandle  = nullptr,
+													.basePipelineIndex   = -1};
+
+		if (device.createGraphicsPipelines(nullptr, 1, &pipelineInfo, nullptr, &graphicsPipeline)
+			!= vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create graphics pipeline!");
 		}
 
 		device.destroyShaderModule(fragShaderModule, nullptr);
@@ -696,6 +734,121 @@ private:
 			throw std::runtime_error("failed to create shader module!");
 		}
 		return shaderModule;
+	}
+
+	void createRenderPass()
+	{
+		vk::AttachmentDescription colorAttachment{.format         = swapChainImageFormat,
+												  .samples        = vk::SampleCountFlagBits::e1,
+												  .loadOp         = vk::AttachmentLoadOp::eClear,
+												  .storeOp        = vk::AttachmentStoreOp::eStore,
+												  .stencilLoadOp  = vk::AttachmentLoadOp::eDontCare,
+												  .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+												  .initialLayout  = vk::ImageLayout::eUndefined,
+												  .finalLayout    = vk::ImageLayout::ePresentSrcKHR};
+
+		vk::AttachmentReference colorAttachmentRef{.attachment = 0,
+												   .layout     = vk::ImageLayout::eColorAttachmentOptimal};
+
+		vk::SubpassDescription subpass{.pipelineBindPoint    = vk::PipelineBindPoint::eGraphics,
+									   .colorAttachmentCount = 1,
+									   .pColorAttachments    = &colorAttachmentRef};
+
+		vk::SubpassDependency dependency{.srcSubpass    = VK_SUBPASS_EXTERNAL,
+										 .dstSubpass    = 0,
+										 .srcStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+										 .dstStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+										 .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite};
+
+		vk::RenderPassCreateInfo renderPassInfo{.attachmentCount = 1,
+												.pAttachments    = &colorAttachment,
+												.subpassCount    = 1,
+												.pSubpasses      = &subpass,
+												.dependencyCount = 1,
+												.pDependencies   = &dependency};
+
+		if (device.createRenderPass(&renderPassInfo, nullptr, &renderPass) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create render pass!");
+		}
+	}
+
+	void createFramebuffers()
+	{
+		swapChainFramebuffers.resize(swapChainImageViews.size());
+		for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+			vk::ImageView attachments[] = {swapChainImageViews[i]};
+
+			vk::FramebufferCreateInfo framebufferInfo{.renderPass      = renderPass,
+													  .attachmentCount = 1,
+													  .pAttachments    = attachments,
+													  .width           = swapChainExtent.width,
+													  .height          = swapChainExtent.height,
+													  .layers          = 1};
+			if (device.createFramebuffer(&framebufferInfo, nullptr, &swapChainFramebuffers[i])
+				!= vk::Result::eSuccess) {
+				throw std::runtime_error("failed to create framebuffer!");
+			}
+		}
+	}
+
+	void createCommandPool()
+	{
+		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+
+		vk::CommandPoolCreateInfo poolInfo{.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value()};
+
+		if (device.createCommandPool(&poolInfo, nullptr, &commandPool) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create command pool!");
+		}
+	}
+
+	void createCommandBuffers()
+	{
+		commandBuffers.resize(swapChainFramebuffers.size());
+		vk::CommandBufferAllocateInfo allocInfo{.commandPool        = commandPool,
+												.level              = vk::CommandBufferLevel::ePrimary,
+												.commandBufferCount = (uint32_t)commandBuffers.size()};
+
+		if (device.allocateCommandBuffers(&allocInfo, commandBuffers.data()) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to allocate command buffers!");
+		}
+
+		for (size_t i = 0; i < commandBuffers.size(); i++) {
+			vk::CommandBufferBeginInfo beginInfo{};
+			if (commandBuffers[i].begin(&beginInfo) != vk::Result::eSuccess) {
+				throw std::runtime_error("failed to begin recording command buffer!");
+			}
+
+			vk::ClearValue clearColor = {std::array<float, 4>({{0.0f, 0.0f, 0.0f, 1.0f}})};
+
+			vk::RenderPassBeginInfo renderPassInfo{.renderPass      = renderPass,
+												   .framebuffer     = swapChainFramebuffers[i],
+												   .clearValueCount = 1,
+												   .pClearValues    = &clearColor};
+
+			renderPassInfo.renderArea.offset = VkOffset2D{0, 0};
+			renderPassInfo.renderArea.extent = swapChainExtent;
+
+			commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
+
+			commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
+			commandBuffers[i].draw(3, 1, 0, 0);
+
+			commandBuffers[i].endRenderPass();
+
+			// Presumably has built in fail check
+			commandBuffers[i].end();
+		}
+	}
+
+	void createSemaphores()
+	{
+		vk::SemaphoreCreateInfo semaphoreInfo{};
+		if (device.createSemaphore(&semaphoreInfo, nullptr, &imageAvailableSemaphore) != vk::Result::eSuccess
+			|| device.createSemaphore(&semaphoreInfo, nullptr, &renderFinishedSemaphore)
+				   != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create semaphores!");
+		}
 	}
 
 	static VKAPI_ATTR vk::Bool32 VKAPI_CALL
@@ -728,14 +881,61 @@ private:
 	{
 		while (!glfwWindowShouldClose(window)) {
 			glfwPollEvents();
+			drawFrame();
 		}
+
+		device.waitIdle();
+	}
+
+	void drawFrame()
+	{
+		uint32_t imageIndex;
+		device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphore, nullptr, &imageIndex);
+
+		vk::Semaphore waitSemaphores[]      = {imageAvailableSemaphore};
+		vk::Semaphore signalSemaphores[]    = {renderFinishedSemaphore};
+		vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
+
+		vk::SubmitInfo submitInfo{.waitSemaphoreCount   = 1,
+								  .pWaitSemaphores      = waitSemaphores,
+								  .pWaitDstStageMask    = waitStages,
+								  .commandBufferCount   = 1,
+								  .pCommandBuffers      = &commandBuffers[imageIndex],
+								  .signalSemaphoreCount = 1,
+								  .pSignalSemaphores    = signalSemaphores};
+
+		if (graphicsQueue.submit(1, &submitInfo, nullptr) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to submit draw command buffer!");
+		}
+
+		vk::SwapchainKHR swapChains[] = {swapChain};
+
+		vk::PresentInfoKHR presentInfo{.waitSemaphoreCount = 1,
+									   .pWaitSemaphores    = signalSemaphores,
+									   .swapchainCount     = 1,
+									   .pSwapchains        = swapChains,
+									   .pImageIndices      = &imageIndex,
+									   .pResults           = nullptr};
+
+		presentQueue.presentKHR(&presentInfo);
 	}
 
 	void cleanup()
 	{
 		std::cout << std::endl;
 
+		device.destroySemaphore(renderFinishedSemaphore, nullptr);
+		device.destroySemaphore(imageAvailableSemaphore, nullptr);
+
+		device.destroyCommandPool(commandPool, nullptr);
+
+		for (auto framebuffer : swapChainFramebuffers) {
+			device.destroyFramebuffer(framebuffer, nullptr);
+		}
+
+		device.destroyPipeline(graphicsPipeline, nullptr);
 		device.destroyPipelineLayout(pipelineLayout, nullptr);
+		device.destroyRenderPass(renderPass, nullptr);
 
 		for (auto imageView : swapChainImageViews) {
 			device.destroyImageView(imageView, nullptr);
