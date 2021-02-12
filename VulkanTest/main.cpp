@@ -16,12 +16,15 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <optional>
 #include <set>
 #include <stdexcept>
 #include <vector>
+
+#include "utils.hpp"
 
 const uint32_t WIDTH  = 800;
 const uint32_t HEIGHT = 600;
@@ -88,6 +91,8 @@ private:
 	vk::Format swapChainImageFormat;
 	vk::Extent2D swapChainExtent;
 
+	vk::PipelineLayout pipelineLayout;
+
 	struct QueueFamilyIndices
 	{
 		std::optional<uint32_t> graphicsFamily;
@@ -124,6 +129,8 @@ private:
 
 		createSwapChain();
 		createImageViews();
+
+		createGraphicsPipeline();
 	}
 
 	void setupDebugMessenger()
@@ -581,6 +588,116 @@ private:
 		}
 	}
 
+	void createGraphicsPipeline()
+	{
+		auto vertShaderCode = readFile("shaders/vert.spv");
+		auto fragShaderCode = readFile("shaders/frag.spv");
+
+		vk::ShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		vk::ShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+		vk::PipelineShaderStageCreateInfo vertShaderStageInfo{.stage = vk::ShaderStageFlagBits::eVertex,
+															  .pName = "main"};
+
+		// WTF
+		vertShaderStageInfo.module = vertShaderModule;
+
+		vk::PipelineShaderStageCreateInfo fragShaderStageInfo{.stage = vk::ShaderStageFlagBits::eFragment,
+															  .pName = "main"};
+		// Again??
+		fragShaderStageInfo.module = fragShaderModule;
+
+		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo{.vertexBindingDescriptionCount   = 0,
+															   .pVertexBindingDescriptions      = nullptr,
+															   .vertexAttributeDescriptionCount = 0,
+															   .pVertexAttributeDescriptions    = nullptr};
+
+		vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
+			.topology = vk::PrimitiveTopology::eTriangleList, .primitiveRestartEnable = VK_FALSE};
+
+		vk::Viewport viewport{.x        = 0.0f,
+							  .y        = 0.0f,
+							  .width    = static_cast<float>(swapChainExtent.width),
+							  .height   = static_cast<float>(swapChainExtent.height),
+							  .minDepth = 0.0f,
+							  .maxDepth = 1.0f};
+
+		vk::Rect2D scissor{.offset = {0, 0}, .extent = swapChainExtent};
+
+		vk::PipelineViewportStateCreateInfo viewportState{
+			.viewportCount = 1, .pViewports = &viewport, .scissorCount = 1, .pScissors = &scissor};
+
+		vk::PipelineRasterizationStateCreateInfo rasterizer{.depthClampEnable        = VK_FALSE,
+															.rasterizerDiscardEnable = VK_FALSE,
+															.polygonMode             = vk::PolygonMode::eFill,
+															.cullMode        = vk::CullModeFlagBits::eBack,
+															.frontFace       = vk::FrontFace::eClockwise,
+															.depthBiasEnable = VK_FALSE,
+															.depthBiasConstantFactor = 0.0f,
+															.depthBiasClamp          = 0.0f,
+															.depthBiasSlopeFactor    = 0.0f,
+															.lineWidth               = 1.0f};
+
+		vk::PipelineMultisampleStateCreateInfo multisampling{
+			.rasterizationSamples  = vk::SampleCountFlagBits::e1,
+			.sampleShadingEnable   = VK_FALSE,
+			.minSampleShading      = 1.0f,
+			.pSampleMask           = nullptr,
+			.alphaToCoverageEnable = VK_FALSE,
+			.alphaToOneEnable      = VK_FALSE};
+
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+			.blendEnable         = VK_TRUE,
+			.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+			.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+			.colorBlendOp        = vk::BlendOp::eAdd,
+			.srcAlphaBlendFactor = vk::BlendFactor::eOne,
+			.dstAlphaBlendFactor = vk::BlendFactor::eZero,
+			.alphaBlendOp        = vk::BlendOp::eAdd,
+			.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+							  vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+
+		vk::PipelineColorBlendStateCreateInfo colorBlending{.logicOpEnable   = VK_FALSE,
+															.logicOp         = vk::LogicOp::eCopy,
+															.attachmentCount = 1,
+															.pAttachments    = &colorBlendAttachment};
+		colorBlending.blendConstants[0] = 0.0f;
+		colorBlending.blendConstants[1] = 0.0f;
+		colorBlending.blendConstants[2] = 0.0f;
+		colorBlending.blendConstants[3] = 0.0f;
+
+		vk::DynamicState dynamicStates[] = {vk::DynamicState::eViewport, vk::DynamicState::eLineWidth};
+
+		vk::PipelineDynamicStateCreateInfo dynamicState{.dynamicStateCount = 2,
+														.pDynamicStates    = dynamicStates};
+
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount         = 0,
+														.pSetLayouts            = nullptr,
+														.pushConstantRangeCount = 0,
+														.pPushConstantRanges    = nullptr};
+
+		if (device.createPipelineLayout(&pipelineLayoutInfo, nullptr, &pipelineLayout) !=
+			vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create pipeline layout!");
+		}
+
+		device.destroyShaderModule(fragShaderModule, nullptr);
+		device.destroyShaderModule(vertShaderModule, nullptr);
+	}
+
+	vk::ShaderModule createShaderModule(const std::vector<char>& code)
+	{
+		vk::ShaderModuleCreateInfo createInfo{.codeSize = code.size(),
+											  .pCode    = reinterpret_cast<const uint32_t*>(code.data())};
+		vk::ShaderModule shaderModule;
+		if (device.createShaderModule(&createInfo, nullptr, &shaderModule) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create shader module!");
+		}
+		return shaderModule;
+	}
+
 	static VKAPI_ATTR vk::Bool32 VKAPI_CALL
 	debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 				  VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -617,6 +734,8 @@ private:
 	void cleanup()
 	{
 		std::cout << std::endl;
+
+		device.destroyPipelineLayout(pipelineLayout, nullptr);
 
 		for (auto imageView : swapChainImageViews) {
 			device.destroyImageView(imageView, nullptr);
