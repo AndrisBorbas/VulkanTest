@@ -29,6 +29,8 @@
 const uint32_t WIDTH  = 800;
 const uint32_t HEIGHT = 600;
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
@@ -39,25 +41,6 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
-
-vk::Result CreateDebugUtilsMessengerEXT(vk::Instance* instance,
-										const vk::DebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-										const vk::AllocationCallbacks* pAllocator,
-										vk::DebugUtilsMessengerEXT* pDebugMessenger)
-{
-	auto dldi = vk::DispatchLoaderDynamic(*instance, vkGetInstanceProcAddr);
-
-	return instance->createDebugUtilsMessengerEXT(pCreateInfo, pAllocator, pDebugMessenger, dldi);
-}
-
-void DestroyDebugUtilsMessengerEXT(vk::Instance* instance,
-								   vk::DebugUtilsMessengerEXT debugMessenger,
-								   const vk::AllocationCallbacks* pAllocator)
-{
-	auto dldi = vk::DispatchLoaderDynamic(*instance, vkGetInstanceProcAddr);
-
-	instance->destroyDebugUtilsMessengerEXT(debugMessenger, pAllocator, dldi);
-}
 
 class HelloTriangleApplication
 {
@@ -100,8 +83,12 @@ private:
 	vk::CommandPool commandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
-	vk::Semaphore imageAvailableSemaphore;
-	vk::Semaphore renderFinishedSemaphore;
+	std::vector<vk::Semaphore> imageAvailableSemaphores;
+	std::vector<vk::Semaphore> renderFinishedSemaphores;
+	std::vector<vk::Fence> inFlightFences;
+	std::vector<vk::Fence> imagesInFlight;
+
+	size_t currentFrame = 0;
 
 	struct QueueFamilyIndices
 	{
@@ -147,7 +134,7 @@ private:
 		createCommandPool();
 		createCommandBuffers();
 
-		createSemaphores();
+		createSyncObjects();
 	}
 
 	void setupDebugMessenger()
@@ -156,8 +143,7 @@ private:
 		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
 		populateDebugMessengerCreateInfo(createInfo);
 
-		if (CreateDebugUtilsMessengerEXT(&instance, &createInfo, nullptr, &debugMessenger)
-			!= vk::Result::eSuccess) {
+		if (CreateDebugUtilsMessengerEXT(&createInfo, nullptr, &debugMessenger) != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to set up debug messenger!");
 		}
 	}
@@ -184,7 +170,7 @@ private:
 									.applicationVersion = VK_MAKE_VERSION(0, 1, 0),
 									.pEngineName        = "Engineer",
 									.engineVersion      = VK_MAKE_VERSION(0, 1, 0),
-									.apiVersion         = VK_API_VERSION_1_2};
+									.apiVersion         = VK_API_VERSION_1_0};
 
 		vk::InstanceCreateInfo createInfo{.pApplicationInfo = &appInfo};
 
@@ -440,6 +426,7 @@ private:
 			throw std::runtime_error("failed to create logical device!");
 		}
 
+		device.getQueue(indices.graphicsFamily.value(), 0, &graphicsQueue);
 		device.getQueue(indices.presentFamily.value(), 0, &presentQueue);
 	}
 
@@ -805,9 +792,10 @@ private:
 	void createCommandBuffers()
 	{
 		commandBuffers.resize(swapChainFramebuffers.size());
-		vk::CommandBufferAllocateInfo allocInfo{.commandPool        = commandPool,
-												.level              = vk::CommandBufferLevel::ePrimary,
-												.commandBufferCount = (uint32_t)commandBuffers.size()};
+		vk::CommandBufferAllocateInfo allocInfo{
+			.commandPool        = commandPool,
+			.level              = vk::CommandBufferLevel::ePrimary,
+			.commandBufferCount = static_cast<uint32_t>(commandBuffers.size())};
 
 		if (device.allocateCommandBuffers(&allocInfo, commandBuffers.data()) != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to allocate command buffers!");
@@ -841,14 +829,42 @@ private:
 		}
 	}
 
-	void createSemaphores()
+	void createSyncObjects()
 	{
+		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		imagesInFlight.resize(swapChainImages.size(), nullptr);
+
 		vk::SemaphoreCreateInfo semaphoreInfo{};
-		if (device.createSemaphore(&semaphoreInfo, nullptr, &imageAvailableSemaphore) != vk::Result::eSuccess
-			|| device.createSemaphore(&semaphoreInfo, nullptr, &renderFinishedSemaphore)
-				   != vk::Result::eSuccess) {
-			throw std::runtime_error("failed to create semaphores!");
+		vk::FenceCreateInfo fenceInfo{.flags = vk::FenceCreateFlagBits::eSignaled};
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			if (device.createSemaphore(&semaphoreInfo, nullptr, &imageAvailableSemaphores[i])
+					!= vk::Result::eSuccess
+				|| device.createSemaphore(&semaphoreInfo, nullptr, &renderFinishedSemaphores[i])
+					   != vk::Result::eSuccess
+				|| device.createFence(&fenceInfo, nullptr, &inFlightFences[i]) != vk::Result::eSuccess) {
+				throw std::runtime_error("failed to create semaphores for a frame!");
+			}
 		}
+	}
+
+	vk::Result CreateDebugUtilsMessengerEXT(const vk::DebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+											const vk::AllocationCallbacks* pAllocator,
+											vk::DebugUtilsMessengerEXT* pDebugMessenger)
+	{
+		auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
+
+		return instance.createDebugUtilsMessengerEXT(pCreateInfo, pAllocator, pDebugMessenger, dldi);
+	}
+
+	void DestroyDebugUtilsMessengerEXT(vk::DebugUtilsMessengerEXT debugMessenger,
+									   const vk::AllocationCallbacks* pAllocator)
+	{
+		auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
+
+		instance.destroyDebugUtilsMessengerEXT(debugMessenger, pAllocator, dldi);
 	}
 
 	static VKAPI_ATTR vk::Bool32 VKAPI_CALL
@@ -889,11 +905,21 @@ private:
 
 	void drawFrame()
 	{
-		uint32_t imageIndex;
-		device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphore, nullptr, &imageIndex);
+		device.waitForFences(1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
-		vk::Semaphore waitSemaphores[]      = {imageAvailableSemaphore};
-		vk::Semaphore signalSemaphores[]    = {renderFinishedSemaphore};
+		uint32_t imageIndex;
+		device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr,
+								   &imageIndex);
+
+		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
+		if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+			device.waitForFences(1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		}
+		// Mark the image as now being in use by this frame
+		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
+
+		vk::Semaphore waitSemaphores[]      = {imageAvailableSemaphores[currentFrame]};
+		vk::Semaphore signalSemaphores[]    = {renderFinishedSemaphores[currentFrame]};
 		vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
 
 		vk::SubmitInfo submitInfo{.waitSemaphoreCount   = 1,
@@ -904,7 +930,17 @@ private:
 								  .signalSemaphoreCount = 1,
 								  .pSignalSemaphores    = signalSemaphores};
 
-		if (graphicsQueue.submit(1, &submitInfo, nullptr) != vk::Result::eSuccess) {
+		VkSubmitInfo asd = submitInfo;
+
+		VkQueue wasd = graphicsQueue;
+
+		/*if (vkQueueSubmit(wasd, 1, &asd, VK_NULL_HANDLE) != VK_SUCCESS) {
+			throw std::runtime_error("failed to submit draw command buffer!");
+		}*/
+
+		device.resetFences(1, &inFlightFences[currentFrame]);
+
+		if (graphicsQueue.submit(1, &submitInfo, inFlightFences[currentFrame]) != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to submit draw command buffer!");
 		}
 
@@ -918,14 +954,21 @@ private:
 									   .pResults           = nullptr};
 
 		presentQueue.presentKHR(&presentInfo);
+
+		presentQueue.waitIdle();
+
+		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
 	void cleanup()
 	{
 		std::cout << std::endl;
 
-		device.destroySemaphore(renderFinishedSemaphore, nullptr);
-		device.destroySemaphore(imageAvailableSemaphore, nullptr);
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			device.destroySemaphore(renderFinishedSemaphores[i], nullptr);
+			device.destroySemaphore(imageAvailableSemaphores[i], nullptr);
+			device.destroyFence(inFlightFences[i], nullptr);
+		}
 
 		device.destroyCommandPool(commandPool, nullptr);
 
@@ -948,7 +991,7 @@ private:
 		instance.destroySurfaceKHR(surface, nullptr);
 
 		if (enableValidationLayers) {
-			DestroyDebugUtilsMessengerEXT(&instance, debugMessenger, nullptr);
+			DestroyDebugUtilsMessengerEXT(debugMessenger, nullptr);
 		}
 
 		instance.destroy();
