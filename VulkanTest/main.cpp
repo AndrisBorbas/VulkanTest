@@ -469,6 +469,9 @@ private:
 			throw std::runtime_error("failed to create swap chain!");
 		}
 
+		swapChainImageFormat = surfaceFormat.format;
+		swapChainExtent      = extent;
+
 		device.getSwapchainImagesKHR(swapChain, &imageCount, nullptr);
 		swapChainImages.resize(imageCount);
 		device.getSwapchainImagesKHR(swapChain, &imageCount, swapChainImages.data());
@@ -558,7 +561,6 @@ private:
 				.image    = swapChainImages[i],
 				.viewType = vk::ImageViewType::e2D,
 				.format   = swapChainImageFormat,
-
 			};
 
 			createInfo.components.r = vk::ComponentSwizzle::eIdentity;
