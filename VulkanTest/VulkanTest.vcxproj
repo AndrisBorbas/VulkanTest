@@ -177,6 +177,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils.hpp" />
+    <ClInclude Include="VulkanDevices.h" />
+    <ClInclude Include="VulkanInit.hpp" />
+    <ClInclude Include="VulkanRendering.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
