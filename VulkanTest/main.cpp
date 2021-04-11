@@ -24,7 +24,8 @@
 #include <stdexcept>
 #include <vector>
 
-#include "VulkanDevices.h"
+#include "Shaders.hpp"
+#include "VulkanDevices.hpp"
 #include "VulkanInit.hpp"
 #include "VulkanRendering.hpp"
 #include "utils.hpp"
@@ -116,7 +117,7 @@ private:
 	void initVulkan()
 	{
 		createInstance();
-		setupDebugMessenger(enableValidationLayers, instance, debugMessenger);
+		setupDebugMessenger();
 
 		createSurface();
 
@@ -178,6 +179,56 @@ private:
 		}
 
 		listExtensions();
+	}
+
+	vk::Result CreateDebugUtilsMessengerEXT(const vk::DebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+											const vk::AllocationCallbacks* pAllocator,
+											vk::DebugUtilsMessengerEXT* pDebugMessenger)
+	{
+		auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
+
+		return instance.createDebugUtilsMessengerEXT(pCreateInfo, pAllocator, pDebugMessenger, dldi);
+	}
+
+	void DestroyDebugUtilsMessengerEXT(vk::DebugUtilsMessengerEXT debugMessenger,
+									   const vk::AllocationCallbacks* pAllocator)
+	{
+		auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
+
+		instance.destroyDebugUtilsMessengerEXT(debugMessenger, pAllocator, dldi);
+	}
+
+	static VKAPI_ATTR vk::Bool32 VKAPI_CALL
+	debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+				  VkDebugUtilsMessageTypeFlagsEXT messageType,
+				  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+				  void* pUserData)
+	{
+		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+		return VK_FALSE;
+	}
+
+	void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo)
+	{
+		createInfo = {.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+										 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+										 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+					  .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+									 | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+									 | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+					  .pfnUserCallback = debugCallback};
+	}
+
+	void setupDebugMessenger()
+	{
+		if (!enableValidationLayers) return;
+		vk::DebugUtilsMessengerCreateInfoEXT createInfo;
+		populateDebugMessengerCreateInfo(createInfo);
+
+		if (CreateDebugUtilsMessengerEXT(&createInfo, nullptr, &debugMessenger) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to set up debug messenger!");
+		}
 	}
 
 	void createSurface()
@@ -360,10 +411,14 @@ private:
 
 		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-		vk::PipelineVertexInputStateCreateInfo vertexInputInfo{.vertexBindingDescriptionCount   = 0,
-															   .pVertexBindingDescriptions      = nullptr,
-															   .vertexAttributeDescriptionCount = 0,
-															   .pVertexAttributeDescriptions    = nullptr};
+		auto bindingDescription    = Vertex::getBindingDescription();
+		auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+			.vertexBindingDescriptionCount   = 1,
+			.pVertexBindingDescriptions      = &bindingDescription,
+			.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+			.pVertexAttributeDescriptions    = attributeDescriptions.data()};
 
 		vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
 			.topology = vk::PrimitiveTopology::eTriangleList, .primitiveRestartEnable = VK_FALSE};
@@ -717,7 +772,7 @@ private:
 		instance.destroySurfaceKHR(surface, nullptr);
 
 		if (enableValidationLayers) {
-			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+			DestroyDebugUtilsMessengerEXT(debugMessenger, nullptr);
 		}
 
 		instance.destroy();

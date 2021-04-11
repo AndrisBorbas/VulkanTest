@@ -7,63 +7,6 @@
 #include <optional>
 #include <vector>
 
-class HelloTriangleApplication;
-
-vk::Result CreateDebugUtilsMessengerEXT(vk::Instance instance,
-										const vk::DebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-										const vk::AllocationCallbacks* pAllocator,
-										vk::DebugUtilsMessengerEXT* pDebugMessenger)
-{
-	auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
-
-	return instance.createDebugUtilsMessengerEXT(pCreateInfo, pAllocator, pDebugMessenger, dldi);
-}
-
-void DestroyDebugUtilsMessengerEXT(vk::Instance instance,
-								   vk::DebugUtilsMessengerEXT debugMessenger,
-								   const vk::AllocationCallbacks* pAllocator)
-{
-	auto dldi = vk::DispatchLoaderDynamic(instance, vkGetInstanceProcAddr);
-
-	instance.destroyDebugUtilsMessengerEXT(debugMessenger, pAllocator, dldi);
-}
-
-static VKAPI_ATTR vk::Bool32 VKAPI_CALL
-debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-			  VkDebugUtilsMessageTypeFlagsEXT messageType,
-			  const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-			  void* pUserData)
-{
-	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-	return VK_FALSE;
-}
-
-void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo)
-{
-	createInfo = {.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
-									 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-									 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-				  .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
-								 | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-								 | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-				  .pfnUserCallback = debugCallback};
-}
-
-void setupDebugMessenger(const bool enableValidationLayers,
-						 vk::Instance instance,
-						 vk::DebugUtilsMessengerEXT debugMessenger)
-{
-	if (!enableValidationLayers) return;
-	vk::DebugUtilsMessengerCreateInfoEXT createInfo;
-	populateDebugMessengerCreateInfo(createInfo);
-
-	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger)
-		!= vk::Result::eSuccess) {
-		throw std::runtime_error("failed to set up debug messenger!");
-	}
-}
-
 bool checkValidationLayerSupport(std::vector<const char*> validationLayers)
 {
 	uint32_t layerCount;

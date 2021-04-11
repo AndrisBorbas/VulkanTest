@@ -37,10 +37,13 @@
     <ClInclude Include="VulkanInit.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VulkanDevices.h">
+    <ClInclude Include="VulkanDevices.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanRendering.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -176,8 +176,9 @@
     <None Include="shaders\shader.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Shaders.hpp" />
     <ClInclude Include="utils.hpp" />
-    <ClInclude Include="VulkanDevices.h" />
+    <ClInclude Include="VulkanDevices.hpp" />
     <ClInclude Include="VulkanInit.hpp" />
     <ClInclude Include="VulkanRendering.hpp" />
   </ItemGroup>
