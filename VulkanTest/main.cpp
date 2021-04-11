@@ -93,14 +93,24 @@ private:
 
 	size_t currentFrame = 0;
 
+	bool framebufferResized = false;
+
 	void initWindow()
 	{
 		glfwInit();
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+		glfwSetWindowUserPointer(window, this);
+		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	}
+
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
+	{
+		auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
+		app->framebufferResized = true;
 	}
 
 	void initVulkan()
@@ -576,6 +586,47 @@ private:
 		}
 	}
 
+	void cleanupSwapChain()
+	{
+		for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
+			device.destroyFramebuffer(swapChainFramebuffers[i], nullptr);
+		}
+
+		device.freeCommandBuffers(commandPool, static_cast<uint32_t>(commandBuffers.size()),
+								  commandBuffers.data());
+
+		device.destroyPipeline(graphicsPipeline, nullptr);
+		device.destroyPipelineLayout(pipelineLayout, nullptr);
+		device.destroyRenderPass(renderPass, nullptr);
+
+		for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+			device.destroyImageView(swapChainImageViews[i], nullptr);
+		}
+
+		device.destroySwapchainKHR(swapChain, nullptr);
+	}
+
+	void recreateSwapChain()
+	{
+		int width = 0, height = 0;
+		glfwGetFramebufferSize(window, &width, &height);
+		while (width == 0 || height == 0) {
+			glfwGetFramebufferSize(window, &width, &height);
+			glfwWaitEvents();
+		}
+
+		vkDeviceWaitIdle(device);
+
+		cleanupSwapChain();
+
+		createSwapChain();
+		createImageViews();
+		createRenderPass();
+		createGraphicsPipeline();
+		createFramebuffers();
+		createCommandBuffers();
+	}
+
 	void mainLoop()
 	{
 		while (!glfwWindowShouldClose(window)) {
@@ -591,8 +642,15 @@ private:
 		device.waitForFences(1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 		uint32_t imageIndex;
-		device.acquireNextImageKHR(swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr,
-								   &imageIndex);
+		vk::Result result = device.acquireNextImageKHR(
+			swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], nullptr, &imageIndex);
+
+		if (result == vk::Result::eErrorOutOfDateKHR) {
+			recreateSwapChain();
+			return;
+		} else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+			throw std::runtime_error("failed to acquire swap chain image!");
+		}
 
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
@@ -613,14 +671,6 @@ private:
 								  .signalSemaphoreCount = 1,
 								  .pSignalSemaphores    = signalSemaphores};
 
-		VkSubmitInfo asd = submitInfo;
-
-		VkQueue wasd = graphicsQueue;
-
-		/*if (vkQueueSubmit(wasd, 1, &asd, VK_NULL_HANDLE) != VK_SUCCESS) {
-			throw std::runtime_error("failed to submit draw command buffer!");
-		}*/
-
 		device.resetFences(1, &inFlightFences[currentFrame]);
 
 		if (graphicsQueue.submit(1, &submitInfo, inFlightFences[currentFrame]) != vk::Result::eSuccess) {
@@ -636,9 +686,15 @@ private:
 									   .pImageIndices      = &imageIndex,
 									   .pResults           = nullptr};
 
-		presentQueue.presentKHR(&presentInfo);
+		result = presentQueue.presentKHR(&presentInfo);
 
-		presentQueue.waitIdle();
+		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR
+			|| framebufferResized) {
+			framebufferResized = false;
+			recreateSwapChain();
+		} else if (result != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to present swap chain image!");
+		}
 
 		currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
@@ -646,6 +702,7 @@ private:
 	void cleanup()
 	{
 		std::cout << std::endl;
+		cleanupSwapChain();
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			device.destroySemaphore(renderFinishedSemaphores[i], nullptr);
@@ -654,20 +711,6 @@ private:
 		}
 
 		device.destroyCommandPool(commandPool, nullptr);
-
-		for (auto framebuffer : swapChainFramebuffers) {
-			device.destroyFramebuffer(framebuffer, nullptr);
-		}
-
-		device.destroyPipeline(graphicsPipeline, nullptr);
-		device.destroyPipelineLayout(pipelineLayout, nullptr);
-		device.destroyRenderPass(renderPass, nullptr);
-
-		for (auto imageView : swapChainImageViews) {
-			device.destroyImageView(imageView, nullptr);
-		}
-
-		device.destroySwapchainKHR(swapChain, nullptr);
 
 		device.destroy();
 

@@ -7,6 +7,8 @@
 #include <optional>
 #include <vector>
 
+class HelloTriangleApplication;
+
 vk::Result CreateDebugUtilsMessengerEXT(vk::Instance instance,
 										const vk::DebugUtilsMessengerCreateInfoEXT* pCreateInfo,
 										const vk::AllocationCallbacks* pAllocator,
@@ -70,10 +72,10 @@ bool checkValidationLayerSupport(std::vector<const char*> validationLayers)
 	std::vector<vk::LayerProperties> availableLayers(layerCount);
 	vk::enumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 	bool layerFound = false;
+	std::cout << "Available validation layers: \n";
 	for (const char* layerName : validationLayers) {
-		std::cout << layerName << std::endl;
-
 		for (const auto& layerProperties : availableLayers) {
+			std::cout << layerProperties.layerName << std::endl;
 			if (strcmp(layerName, layerProperties.layerName) == 0) {
 				layerFound = true;
 				break;
