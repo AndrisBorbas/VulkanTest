@@ -7,7 +7,7 @@
 #include <optional>
 #include <vector>
 
-bool checkValidationLayerSupport(std::vector<const char*> validationLayers)
+bool checkValidationLayerSupport(const std::vector<const char*>& validationLayers)
 {
 	uint32_t layerCount;
 	vk::enumerateInstanceLayerProperties(&layerCount, nullptr);

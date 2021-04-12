@@ -55,7 +55,7 @@ QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice device, vk::Surfac
 	return indices;
 }
 
-bool checkDeviceExtensionSupport(const vk::PhysicalDevice device, std::vector<const char*> deviceExtensions)
+bool checkDeviceExtensionSupport(const vk::PhysicalDevice device, std::vector<const char*>& deviceExtensions)
 {
 	uint32_t extensionCount;
 	device.enumerateDeviceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -100,7 +100,7 @@ SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice device, v
 
 bool isDeviceSuitable(const vk::PhysicalDevice device,
 					  vk::SurfaceKHR surface,
-					  std::vector<const char*> deviceExtensions)
+					  std::vector<const char*>& deviceExtensions)
 {
 	if (!findQueueFamilies(device, surface).isComplete()) {
 		return false;
