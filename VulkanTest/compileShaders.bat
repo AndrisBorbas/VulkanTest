@@ -1,3 +1,3 @@
-C:/VulkanSDK/1.2.162.1/Bin32/glslc.exe shaders/shader.vert -o shaders/vert.spv
-C:/VulkanSDK/1.2.162.1/Bin32/glslc.exe shaders/shader.frag -o shaders/frag.spv
+C:/SDKs/VulkanSDK/1.2.170.0/Bin32/glslc.exe shaders/shader.vert -o assets/shaders/shader.vert.spv
+C:/SDKs/VulkanSDK/1.2.170.0/Bin32/glslc.exe shaders/shader.frag -o assets/shaders/shader.frag.spv
 pause

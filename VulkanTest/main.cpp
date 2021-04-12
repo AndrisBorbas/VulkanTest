@@ -92,6 +92,17 @@ private:
 	std::vector<vk::Fence> inFlightFences;
 	std::vector<vk::Fence> imagesInFlight;
 
+	const std::vector<Vertex> vertices  = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+	const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+
+	vk::Buffer vertexBuffer;
+	vk::DeviceMemory vertexBufferMemory;
+	vk::Buffer indexBuffer;
+	vk::DeviceMemory indexBufferMemory;
+
 	size_t currentFrame = 0;
 
 	bool framebufferResized = false;
@@ -132,6 +143,8 @@ private:
 
 		createFramebuffers();
 		createCommandPool();
+		createVertexBuffer();
+		createIndexBuffer();
 		createCommandBuffers();
 
 		createSyncObjects();
@@ -211,9 +224,10 @@ private:
 
 	void populateDebugMessengerCreateInfo(vk::DebugUtilsMessengerCreateInfoEXT& createInfo)
 	{
-		createInfo = {.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+		createInfo = {.messageSeverity = /*vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
 										 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-										 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+										 |*/
+					  vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
 					  .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
 									 | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
 									 | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
@@ -395,8 +409,8 @@ private:
 
 	void createGraphicsPipeline()
 	{
-		auto vertShaderCode = readFile("shaders/vert.spv");
-		auto fragShaderCode = readFile("shaders/frag.spv");
+		auto vertShaderCode = readFile("assets/shaders/shader.vert.spv");
+		auto fragShaderCode = readFile("assets/shaders/shader.frag.spv");
 
 		vk::ShaderModule vertShaderModule = createShaderModule(device, vertShaderCode);
 		vk::ShaderModule fragShaderModule = createShaderModule(device, fragShaderCode);
@@ -580,6 +594,111 @@ private:
 		}
 	}
 
+	void createBuffer(vk::DeviceSize size,
+					  vk::BufferUsageFlags usage,
+					  vk::MemoryPropertyFlags properties,
+					  vk::Buffer& buffer,
+					  vk::DeviceMemory& bufferMemory)
+	{
+		vk::BufferCreateInfo bufferInfo = {
+			.size = size, .usage = usage, .sharingMode = vk::SharingMode::eExclusive};
+
+		if (device.createBuffer(&bufferInfo, nullptr, &buffer) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create buffer!");
+		}
+
+		vk::MemoryRequirements memRequirements;
+		device.getBufferMemoryRequirements(buffer, &memRequirements);
+
+		vk::MemoryAllocateInfo allocInfo{
+			.allocationSize  = memRequirements.size,
+			.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties)};
+
+		if (device.allocateMemory(&allocInfo, nullptr, &bufferMemory) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to allocate buffer memory!");
+		}
+
+		vkBindBufferMemory(device, buffer, bufferMemory, 0);
+	}
+
+	void copyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
+	{
+		vk::CommandBufferAllocateInfo allocInfo{
+			.commandPool = commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = 1};
+
+		vk::CommandBuffer commandBuffer;
+		device.allocateCommandBuffers(&allocInfo, &commandBuffer);
+
+		vk::CommandBufferBeginInfo beginInfo = {.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
+
+		commandBuffer.begin(&beginInfo);
+
+		vk::BufferCopy copyRegion{.srcOffset = 0,  // Optional
+								  .dstOffset = 0,  // Optional
+								  .size      = size};
+
+		commandBuffer.copyBuffer(srcBuffer, dstBuffer, 1, &copyRegion);
+
+		commandBuffer.end();
+
+		vk::SubmitInfo submitInfo{.commandBufferCount = 1, .pCommandBuffers = &commandBuffer};
+
+		graphicsQueue.submit(1, &submitInfo, {});
+		graphicsQueue.waitIdle();
+
+		device.freeCommandBuffers(commandPool, 1, &commandBuffer);
+	}
+
+	void createVertexBuffer()
+	{
+		vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+		vk::Buffer stagingBuffer;
+		vk::DeviceMemory stagingBufferMemory;
+		createBuffer(bufferSize,
+					 vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eVertexBuffer,
+					 vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+
+		void* data;
+		device.mapMemory(stagingBufferMemory, 0, bufferSize, {}, &data);
+		memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+		device.unmapMemory(stagingBufferMemory);
+
+		createBuffer(bufferSize,
+					 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+					 vk::MemoryPropertyFlagBits::eDeviceLocal, vertexBuffer, vertexBufferMemory);
+
+		copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+		device.destroyBuffer(stagingBuffer, nullptr);
+		device.freeMemory(stagingBufferMemory, nullptr);
+	}
+
+	void createIndexBuffer()
+	{
+		vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+		vk::Buffer stagingBuffer;
+		vk::DeviceMemory stagingBufferMemory;
+		createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+					 vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+					 stagingBuffer, stagingBufferMemory);
+
+		void* data;
+		device.mapMemory(stagingBufferMemory, 0, bufferSize, {}, &data);
+		memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+		device.unmapMemory(stagingBufferMemory);
+
+		createBuffer(bufferSize,
+					 vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+					 vk::MemoryPropertyFlagBits::eDeviceLocal, indexBuffer, indexBufferMemory);
+
+		copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+		device.destroyBuffer(stagingBuffer, nullptr);
+		device.freeMemory(stagingBufferMemory, nullptr);
+	}
+
 	void createCommandBuffers()
 	{
 		commandBuffers.resize(swapChainFramebuffers.size());
@@ -611,7 +730,13 @@ private:
 			commandBuffers[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
 
 			commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline);
-			commandBuffers[i].draw(3, 1, 0, 0);
+
+			vk::Buffer vertexBuffers[] = {vertexBuffer};
+			vk::DeviceSize offsets[]   = {0};
+			commandBuffers[i].bindVertexBuffers(0, 1, vertexBuffers, offsets);
+			commandBuffers[i].bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint16);
+
+			commandBuffers[i].drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 			commandBuffers[i].endRenderPass();
 
@@ -643,8 +768,8 @@ private:
 
 	void cleanupSwapChain()
 	{
-		for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
-			device.destroyFramebuffer(swapChainFramebuffers[i], nullptr);
+		for (auto& swapChainFramebuffer : swapChainFramebuffers) {
+			device.destroyFramebuffer(swapChainFramebuffer, nullptr);
 		}
 
 		device.freeCommandBuffers(commandPool, static_cast<uint32_t>(commandBuffers.size()),
@@ -654,8 +779,8 @@ private:
 		device.destroyPipelineLayout(pipelineLayout, nullptr);
 		device.destroyRenderPass(renderPass, nullptr);
 
-		for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-			device.destroyImageView(swapChainImageViews[i], nullptr);
+		for (auto& swapChainImageView : swapChainImageViews) {
+			device.destroyImageView(swapChainImageView, nullptr);
 		}
 
 		device.destroySwapchainKHR(swapChain, nullptr);
@@ -758,6 +883,12 @@ private:
 	{
 		std::cout << std::endl;
 		cleanupSwapChain();
+
+		device.destroyBuffer(indexBuffer, nullptr);
+		device.freeMemory(indexBufferMemory, nullptr);
+
+		device.destroyBuffer(vertexBuffer, nullptr);
+		device.freeMemory(vertexBufferMemory, nullptr);
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			device.destroySemaphore(renderFinishedSemaphores[i], nullptr);
