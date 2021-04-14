@@ -43,7 +43,7 @@ add_executable(VulkanTest
         VulkanTest/Vulkan/VulkanRendering.hpp
         VulkanTest/Vulkan/VulkanInit.cpp
         VulkanTest/Defines.h
-        )
+        VulkanTest/Vulkan/VulkanDevices.cpp)
 
 ### GLFW
 set(GLFW3_LIBRARY C:/SDKs/glfw-3.3.4.bin.WIN64/lib-vc2019/glfw3.lib)
