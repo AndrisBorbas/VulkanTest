@@ -21,9 +21,9 @@
 #include <vector>
 
 #include "Shaders.hpp"
-#include "VulkanDevices.hpp"
-#include "VulkanInit.hpp"
-#include "VulkanRendering.hpp"
+#include "Vulkan/VulkanDevices.hpp"
+#include "Vulkan/VulkanInit.hpp"
+#include "Vulkan/VulkanRendering.hpp"
 #include "utils.hpp"
 
 const uint32_t WIDTH  = 800;
@@ -120,7 +120,7 @@ private:
 		instance_       = createInstance(validationLayers);
 		debugMessenger_ = setupDebugMessenger(instance_);
 
-		createSurface();
+		surface_ = createSurface(instance_, window_);
 
 		pickPhysicalDevice();
 		createLogicalDevice();
@@ -138,15 +138,6 @@ private:
 		createCommandBuffers();
 
 		createSyncObjects();
-	}
-
-	void createSurface()
-	{
-		VkSurfaceKHR tempSurface;
-		if (glfwCreateWindowSurface(instance_, window_, nullptr, &tempSurface) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create window surface!");
-		}
-		surface_ = vk::SurfaceKHR(tempSurface);
 	}
 
 	void pickPhysicalDevice()

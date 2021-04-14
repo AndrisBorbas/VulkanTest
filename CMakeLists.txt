@@ -38,10 +38,10 @@ add_executable(VulkanTest
         VulkanTest/main.cpp
         VulkanTest/Shaders.hpp
         VulkanTest/utils.hpp
-        VulkanTest/VulkanDevices.hpp
-        VulkanTest/VulkanInit.hpp
-        VulkanTest/VulkanRendering.hpp
-        VulkanTest/VulkanInit.cpp
+        VulkanTest/Vulkan/VulkanDevices.hpp
+        VulkanTest/Vulkan/VulkanInit.hpp
+        VulkanTest/Vulkan/VulkanRendering.hpp
+        VulkanTest/Vulkan/VulkanInit.cpp
         VulkanTest/Defines.h
         )
 

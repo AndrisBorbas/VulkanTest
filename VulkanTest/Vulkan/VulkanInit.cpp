@@ -82,6 +82,18 @@ debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	return VK_FALSE;
 }
 
+vk::DebugUtilsMessengerCreateInfoEXT populateDebugMessengerCreateInfo()
+{
+	return {.messageSeverity = /*vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+									 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+									 | */
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+			.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+						   | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+						   | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+			.pfnUserCallback = debugCallback};
+}
+
 vk::Instance createInstance(const std::vector<const char*>& validationLayers)
 {
 	vk::Instance instance;
@@ -105,15 +117,7 @@ vk::Instance createInstance(const std::vector<const char*>& validationLayers)
 	createInfo.enabledExtensionCount    = static_cast<uint32_t>(extensions.size());
 	createInfo.ppEnabledExtensionNames  = extensions.data();
 
-	vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{
-		.messageSeverity = /*vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
-						   | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-						   | */
-		vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-		.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
-					   | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-					   | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-		.pfnUserCallback = debugCallback};
+	vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo = populateDebugMessengerCreateInfo();
 
 #ifdef ENABLE_VALIDATION_LAYERS
 	createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
@@ -157,15 +161,7 @@ vk::DebugUtilsMessengerEXT setupDebugMessenger(vk::Instance& instance)
 #ifndef ENABLE_VALIDATION_LAYERS
 	return {};
 #endif
-	vk::DebugUtilsMessengerCreateInfoEXT createInfo;
-	createInfo.messageSeverity = /* vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
-								 | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-								 | */
-		vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
-	createInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
-							 | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-							 | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
-	createInfo.pfnUserCallback = debugCallback;
+	vk::DebugUtilsMessengerCreateInfoEXT createInfo = populateDebugMessengerCreateInfo();
 
 	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger)
 		!= vk::Result::eSuccess) {
@@ -173,4 +169,13 @@ vk::DebugUtilsMessengerEXT setupDebugMessenger(vk::Instance& instance)
 	}
 
 	return debugMessenger;
+}
+
+vk::SurfaceKHR createSurface(vk::Instance& instance, GLFWwindow* window)
+{
+    VkSurfaceKHR tempSurface;
+    if (glfwCreateWindowSurface(instance, window, nullptr, &tempSurface) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create window surface!");
+    }
+    return vk::SurfaceKHR(tempSurface);
 }
