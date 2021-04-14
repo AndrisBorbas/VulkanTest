@@ -182,7 +182,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="VulkanInit.cpp" />
+    <ClCompile Include="Vulkan\VulkanInit.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\shader.frag" />
@@ -192,9 +192,9 @@
     <ClInclude Include="Defines.h" />
     <ClInclude Include="Shaders.hpp" />
     <ClInclude Include="utils.hpp" />
-    <ClInclude Include="VulkanDevices.hpp" />
-    <ClInclude Include="VulkanInit.hpp" />
-    <ClInclude Include="VulkanRendering.hpp" />
+    <ClInclude Include="Vulkan\VulkanDevices.hpp" />
+    <ClInclude Include="Vulkan\VulkanInit.hpp" />
+    <ClInclude Include="Vulkan\VulkanRendering.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

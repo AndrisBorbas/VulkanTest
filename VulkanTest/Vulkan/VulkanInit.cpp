@@ -1,4 +1,4 @@
-#include "Defines.h"
+#include "../Defines.h"
 
 #include "VulkanInit.hpp"
 
@@ -173,9 +173,9 @@ vk::DebugUtilsMessengerEXT setupDebugMessenger(vk::Instance& instance)
 
 vk::SurfaceKHR createSurface(vk::Instance& instance, GLFWwindow* window)
 {
-    VkSurfaceKHR tempSurface;
-    if (glfwCreateWindowSurface(instance, window, nullptr, &tempSurface) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create window surface!");
-    }
-    return vk::SurfaceKHR(tempSurface);
+	VkSurfaceKHR tempSurface;
+	if (glfwCreateWindowSurface(instance, window, nullptr, &tempSurface) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create window surface!");
+	}
+	return vk::SurfaceKHR(tempSurface);
 }
