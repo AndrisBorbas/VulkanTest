@@ -200,12 +200,12 @@ private:
 			.ppEnabledExtensionNames = deviceExtensions.data(),
 			.pEnabledFeatures        = &deviceFeatures};
 
-		if (enableValidationLayers) {
-			createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
-			createInfo.ppEnabledLayerNames = validationLayers.data();
-		} else {
-			createInfo.enabledLayerCount = 0;
-		}
+#ifdef ENABLE_VALIDATION_LAYERS
+		createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
+		createInfo.ppEnabledLayerNames = validationLayers.data();
+#else
+		createInfo.enabledLayerCount = 0;
+#endif
 
 		if (physicalDevice_.createDevice(&createInfo, nullptr, &device_) != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to create logical device!");
