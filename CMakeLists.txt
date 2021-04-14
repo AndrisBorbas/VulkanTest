@@ -42,7 +42,7 @@ add_executable(VulkanTest
         VulkanTest/VulkanInit.hpp
         VulkanTest/VulkanRendering.hpp
         VulkanTest/VulkanInit.cpp
-        VulkanTest/Defines.hpp
+        VulkanTest/Defines.h
         )
 
 ### GLFW

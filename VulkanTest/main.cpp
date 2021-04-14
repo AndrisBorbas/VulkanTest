@@ -305,8 +305,8 @@ private:
 
 	void createGraphicsPipeline()
 	{
-		auto vertShaderCode = readFile("assets/shaders/shader.vert.spv");
-		auto fragShaderCode = readFile("assets/shaders/shader.frag.spv");
+		auto vertShaderCode = readFile("assets/shaders/test.vert.spv");
+		auto fragShaderCode = readFile("assets/shaders/test.frag.spv");
 
 		vk::ShaderModule vertShaderModule = createShaderModule(device_, vertShaderCode);
 		vk::ShaderModule fragShaderModule = createShaderModule(device_, fragShaderCode);
