@@ -182,6 +182,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Vulkan\VulkanDevices.cpp" />
     <ClCompile Include="Vulkan\VulkanInit.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -56,7 +56,7 @@ private:
 
 	vk::SurfaceKHR surface_;
 
-	vk::PhysicalDevice physicalDevice_ = nullptr;
+	vk::PhysicalDevice physicalDevice_;
 	vk::Device device_;
 
 	vk::Queue graphicsQueue_;
@@ -111,7 +111,7 @@ private:
 
 	static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 	{
-		auto app = reinterpret_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
+		auto* app                = static_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
 		app->framebufferResized_ = true;
 	}
 
