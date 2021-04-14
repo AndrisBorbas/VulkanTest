@@ -40,7 +40,10 @@ add_executable(VulkanTest
         VulkanTest/utils.hpp
         VulkanTest/VulkanDevices.hpp
         VulkanTest/VulkanInit.hpp
-        VulkanTest/VulkanRendering.hpp)
+        VulkanTest/VulkanRendering.hpp
+        VulkanTest/VulkanInit.cpp
+        VulkanTest/Defines.hpp
+        )
 
 ### GLFW
 set(GLFW3_LIBRARY C:/SDKs/glfw-3.3.4.bin.WIN64/lib-vc2019/glfw3.lib)
@@ -100,3 +103,19 @@ if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/textures)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets/textures ${output-assets}/textures)
 endif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/textures)
+
+
+if (CMAKE_CONFIGURATION_TYPES)
+    string(TOLOWER "${CMAKE_CONFIGURATION_TYPES}" CMAKE_CONFIGURATION_TYPES_LOWER)
+else ()
+    string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_CONFIGURATION_TYPES_LOWER)
+endif ()
+
+foreach (config ${CMAKE_CONFIGURATION_TYPES_LOWER})
+    if (${config} MATCHES "debug")
+        #add preprocessor definition something like this bellow
+        add_definitions(-DENABLE_VALIDATION_LAYERS)
+    elseif (${config} MATCHES "release")
+        #and so on...
+    endif ()
+endforeach ()

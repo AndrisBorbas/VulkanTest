@@ -16,10 +16,16 @@
     <Filter Include="shaders">
       <UniqueIdentifier>{fba97828-aa7b-407f-a340-be514989154d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vulkan">
+      <UniqueIdentifier>{23448329-b545-45fa-b900-5db0b11e39dd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanInit.cpp">
+      <Filter>Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -34,9 +40,6 @@
     <ClInclude Include="utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VulkanInit.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VulkanDevices.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -45,6 +48,12 @@
     </ClInclude>
     <ClInclude Include="Shaders.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Defines.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanInit.hpp">
+      <Filter>Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
