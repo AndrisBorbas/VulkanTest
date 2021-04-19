@@ -182,8 +182,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Shaders.cpp" />
     <ClCompile Include="Vulkan\VulkanDevices.cpp" />
     <ClCompile Include="Vulkan\VulkanInit.cpp" />
+    <ClCompile Include="Vulkan\VulkanRendering.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\shader.frag" />

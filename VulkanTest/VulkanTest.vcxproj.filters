@@ -30,6 +30,12 @@
     <ClCompile Include="Vulkan\VulkanDevices.cpp">
       <Filter>Vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="Vulkan\VulkanRendering.cpp">
+      <Filter>Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Shaders.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\shader.frag">

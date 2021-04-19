@@ -37,10 +37,12 @@ add_executable(VulkanTest
         Libraries/glm/glm/glm.hpp
         VulkanTest/main.cpp
         VulkanTest/Shaders.hpp
+        VulkanTest/Shaders.cpp
         VulkanTest/utils.hpp
         VulkanTest/Vulkan/VulkanDevices.hpp
         VulkanTest/Vulkan/VulkanInit.hpp
         VulkanTest/Vulkan/VulkanRendering.hpp
+        VulkanTest/Vulkan/VulkanRendering.cpp
         VulkanTest/Vulkan/VulkanInit.cpp
         VulkanTest/Defines.h
         VulkanTest/Vulkan/VulkanDevices.cpp)
