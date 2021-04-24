@@ -404,7 +404,7 @@ void createVertexBuffer(vk::Device& device,
 						vk::PhysicalDevice& physicalDevice,
 						vk::CommandPool& commandPool,
 						vk::Queue& graphicsQueue,
-						const std::vector<Vertex>& vertices,
+						std::vector<Vertex>& vertices,
 						vk::Buffer& vertexBuffer,
 						vk::DeviceMemory& vertexBufferMemory)
 {
@@ -435,7 +435,7 @@ void createIndexBuffer(vk::Device& device,
 					   vk::PhysicalDevice& physicalDevice,
 					   vk::CommandPool& commandPool,
 					   vk::Queue& graphicsQueue,
-					   const std::vector<uint16_t>& indices,
+					   std::vector<uint32_t>& indices,
 					   vk::Buffer& indexBuffer,
 					   vk::DeviceMemory& indexBufferMemory)
 {
@@ -534,7 +534,7 @@ void createCommandBuffers(vk::Device& device,
 						  vk::Buffer& indexBuffer,
 						  vk::PipelineLayout& pipelineLayout,
 						  std::vector<vk::DescriptorSet>& descriptorSets,
-						  const std::vector<uint16_t>& indices)
+						  std::vector<uint32_t>& indices)
 {
 	commandBuffers.resize(swapChainFramebuffers.size());
 	vk::CommandBufferAllocateInfo allocInfo{
@@ -571,7 +571,7 @@ void createCommandBuffers(vk::Device& device,
 		vk::Buffer vertexBuffers[] = {vertexBuffer};
 		vk::DeviceSize offsets[]   = {0};
 		commandBuffers[i].bindVertexBuffers(0, 1, vertexBuffers, offsets);
-		commandBuffers[i].bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint16);
+		commandBuffers[i].bindIndexBuffer(indexBuffer, 0, vk::IndexType::eUint32);
 
 		commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, 1,
 											 &descriptorSets[i], 0, nullptr);
@@ -697,7 +697,8 @@ void updateUniformBuffer(uint32_t currentImage,
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 	UniformBufferObject ubo{};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.model = glm::rotate(glm::mat4(1.0f), glm::sin(time * glm::radians(90.0f)) * 0.45f,
+							glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.view =
 		glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f),

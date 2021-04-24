@@ -30,7 +30,7 @@ void createVertexBuffer(vk::Device& device,
 						vk::PhysicalDevice& physicalDevice,
 						vk::CommandPool& commandPool,
 						vk::Queue& graphicsQueue,
-						const std::vector<Vertex>& vertices,
+						std::vector<Vertex>& vertices,
 						vk::Buffer& vertexBuffer,
 						vk::DeviceMemory& vertexBufferMemory);
 
@@ -38,7 +38,7 @@ void createIndexBuffer(vk::Device& device,
 					   vk::PhysicalDevice& physicalDevice,
 					   vk::CommandPool& commandPool,
 					   vk::Queue& graphicsQueue,
-					   const std::vector<uint16_t>& indices,
+					   std::vector<uint32_t>& indices,
 					   vk::Buffer& indexBuffer,
 					   vk::DeviceMemory& indexBufferMemory);
 
@@ -70,7 +70,7 @@ void createCommandBuffers(vk::Device& device,
 						  vk::Buffer& indexBuffer,
 						  vk::PipelineLayout& pipelineLayout,
 						  std::vector<vk::DescriptorSet>& descriptorSets,
-						  const std::vector<uint16_t>& indices);
+						  std::vector<uint32_t>& indices);
 
 void createSyncObjects(vk::Device& device,
 					   std::vector<vk::Semaphore>& imageAvailableSemaphores,

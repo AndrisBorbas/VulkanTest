@@ -30,12 +30,10 @@ include_directories(Libraries/glm/glm/gtc)
 include_directories(Libraries/glm/glm/gtx)
 include_directories(Libraries/glm/glm/simd)
 include_directories(Libraries/stb-master)
+include_directories(Libraries/tinyobjloader-master)
 include_directories(VulkanTest)
 
 add_executable(VulkanTest
-        Libraries/glfw-3.3.4.bin.WIN64/include/GLFW/glfw3.h
-        Libraries/glfw-3.3.4.bin.WIN64/include/GLFW/glfw3native.h
-        Libraries/glm/glm/glm.hpp
         VulkanTest/main.cpp
         VulkanTest/Shaders.hpp
         VulkanTest/Shaders.cpp
@@ -65,7 +63,8 @@ target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan ${GLFW3_LIBRARY})
 
 add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/assets/textures $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets/textures)
+        ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/assets $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets)
+
 
 include(Shaders.cmake)
 
@@ -90,17 +89,7 @@ foreach (compute-shader ${compute-shaders})
     add_shader(${PROJECT_NAME} ${p})
 endforeach (compute-shader)
 
-
 set(output-assets $<TARGET_FILE_DIR:${PROJECT_NAME}>/${TARGET}/assets)
-
-
-# Copy assets from sample to the appropriate location.
-if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/textures)
-    file(MAKE_DIRECTORY ${output-assets})
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/assets/textures ${output-assets}/textures)
-endif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/assets/textures)
-
 
 if (CMAKE_CONFIGURATION_TYPES)
     string(TOLOWER "${CMAKE_CONFIGURATION_TYPES}" CMAKE_CONFIGURATION_TYPES_LOWER)

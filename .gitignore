@@ -343,3 +343,5 @@ cmake-build-debug/
 Libraries/
 
 cmake-build-release/
+
+!VulkanTest/assets

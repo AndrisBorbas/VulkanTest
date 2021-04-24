@@ -13,7 +13,7 @@ function(add_shader TARGET SHADER)
     # For Android, write SPIR-V files to app/assets which is then packaged into the APK.
     # Otherwise, output in the binary directory.
 
-    set(current-output-path ${CMAKE_BINARY_DIR}/assets/shaders/${SHADER}.spv)
+    set(current-output-path ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/assets/shaders/${SHADER}.spv)
 
 
     # Add a custom command to compile GLSL to SPIR-V.
