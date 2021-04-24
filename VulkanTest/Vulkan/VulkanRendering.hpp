@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <set>
+#include <tuple>
 #include <vector>
 
 #include "../Shaders.hpp"
@@ -82,9 +83,21 @@ void createDescriptorSets(vk::Device& device,
 						  std::vector<vk::DescriptorSet>& descriptorSets,
 						  std::vector<vk::Image>& swapchainImages,
 						  vk::DescriptorPool& descriptorPool,
-						  std::vector<vk::Buffer>& uniformBuffers);
+						  std::vector<vk::Buffer>& uniformBuffers,
+						  vk::ImageView& textureImageView,
+						  vk::Sampler& textureSampler);
 
 void updateUniformBuffer(uint32_t currentImage,
 						 vk::Device& device,
 						 std::vector<vk::DeviceMemory>& uniformBuffersMemory,
 						 vk::Extent2D& swapchainExtent);
+
+std::tuple<vk::Image, vk::DeviceMemory> createTextureImage(vk::Device& device,
+														   vk::PhysicalDevice& physicalDevice,
+														   const char* filename,
+														   int stbiChannels,
+														   vk::Format format,
+														   vk::Queue& graphicsQueue,
+														   vk::CommandPool& commandPool);
+
+vk::Sampler createTextureSampler(vk::Device& device, vk::PhysicalDevice& physicalDevice);

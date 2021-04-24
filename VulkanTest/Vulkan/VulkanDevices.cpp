@@ -11,15 +11,15 @@
 
 #include "VulkanDevices.hpp"
 
-QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice device, vk::SurfaceKHR surface)
+QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface)
 {
 	QueueFamilyIndices indices;
 
 	uint32_t queueFamilyCount = 0;
-	device.getQueueFamilyProperties(&queueFamilyCount, nullptr);
+	physicalDevice.getQueueFamilyProperties(&queueFamilyCount, nullptr);
 
 	std::vector<vk::QueueFamilyProperties> queueFamilies(queueFamilyCount);
-	device.getQueueFamilyProperties(&queueFamilyCount, queueFamilies.data());
+	physicalDevice.getQueueFamilyProperties(&queueFamilyCount, queueFamilies.data());
 
 	int i = 0;
 	for (const auto& queueFamily : queueFamilies) {
@@ -28,7 +28,7 @@ QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice device, vk::Surfac
 		}
 
 		vk::Bool32 presentSupport = false;
-		device.getSurfaceSupportKHR(i, surface, &presentSupport);
+		physicalDevice.getSurfaceSupportKHR(i, surface, &presentSupport);
 		if (presentSupport) {
 			indices.presentFamily = i;
 		}
@@ -62,45 +62,52 @@ bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device,
 	return requiredExtensions.empty();
 }
 
-SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& device, vk::SurfaceKHR& surface)
+SwapChainSupportDetails querySwapChainSupport(const vk::PhysicalDevice& physicalDevice,
+											  vk::SurfaceKHR& surface)
 {
 	SwapChainSupportDetails details;
 
-	device.getSurfaceCapabilitiesKHR(surface, &details.capabilities);
+	physicalDevice.getSurfaceCapabilitiesKHR(surface, &details.capabilities);
 
 	uint32_t formatCount;
-	device.getSurfaceFormatsKHR(surface, &formatCount, nullptr);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+	physicalDevice.getSurfaceFormatsKHR(surface, &formatCount, nullptr);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
 
 	if (formatCount != 0) {
 		details.formats.resize(formatCount);
-		device.getSurfaceFormatsKHR(surface, &formatCount, details.formats.data());
+		physicalDevice.getSurfaceFormatsKHR(surface, &formatCount, details.formats.data());
 	}
 
 	uint32_t presentModeCount;
-	device.getSurfacePresentModesKHR(surface, &presentModeCount, nullptr);
+	physicalDevice.getSurfacePresentModesKHR(surface, &presentModeCount, nullptr);
 
 	if (presentModeCount != 0) {
 		details.presentModes.resize(presentModeCount);
-		device.getSurfacePresentModesKHR(surface, &presentModeCount, details.presentModes.data());
+		physicalDevice.getSurfacePresentModesKHR(surface, &presentModeCount, details.presentModes.data());
 	}
 
 	return details;
 }
 
-bool isDeviceSuitable(const vk::PhysicalDevice& device,
+bool isDeviceSuitable(const vk::PhysicalDevice& physicalDevice,
 					  vk::SurfaceKHR& surface,
 					  const std::vector<const char*>& deviceExtensions)
 {
-	if (!findQueueFamilies(device, surface).isComplete()) {
+	if (!findQueueFamilies(physicalDevice, surface).isComplete()) {
 		return false;
 	}
-	if (!checkDeviceExtensionSupport(device, deviceExtensions)) {
+	if (!checkDeviceExtensionSupport(physicalDevice, deviceExtensions)) {
 		return false;
 	}
 
-	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, surface);
+	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice, surface);
 	if (swapChainSupport.formats.empty() || swapChainSupport.presentModes.empty()) {
+		return false;
+	}
+
+	vk::PhysicalDeviceFeatures2 supportedFeatures;
+	physicalDevice.getFeatures2(&supportedFeatures);
+	if (!supportedFeatures.features.samplerAnisotropy) {
 		return false;
 	}
 
@@ -193,13 +200,17 @@ vk::Device createLogicalDevice(vk::Instance& instance,
 		queueCreateInfos.push_back(queueCreateInfo);
 	}
 
-	vk::PhysicalDeviceFeatures deviceFeatures{};
+	vk::PhysicalDeviceFeatures deviceFeatures{
+		.samplerAnisotropy = VK_TRUE,
+	};
 
-	vk::DeviceCreateInfo createInfo{.queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos.size()),
-									.pQueueCreateInfos       = queueCreateInfos.data(),
-									.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
-									.ppEnabledExtensionNames = deviceExtensions.data(),
-									.pEnabledFeatures        = &deviceFeatures};
+	vk::DeviceCreateInfo createInfo{
+		.queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos.size()),
+		.pQueueCreateInfos       = queueCreateInfos.data(),
+		.enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
+		.ppEnabledExtensionNames = deviceExtensions.data(),
+		.pEnabledFeatures        = &deviceFeatures,
+	};
 
 #ifdef ENABLE_VALIDATION_LAYERS
 	createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
@@ -340,33 +351,38 @@ vk::SwapchainKHR createSwapChain(vk::Device& device,
 	return swapchain;
 }
 
+vk::ImageView createImageView(vk::Device& device, vk::Image& image, vk::Format format)
+{
+	vk::ImageViewCreateInfo viewInfo{
+		.image    = image,
+		.viewType = vk::ImageViewType::e2D,
+		.format   = format,
+		.subresourceRange =
+			{
+				.aspectMask     = vk::ImageAspectFlagBits::eColor,
+				.baseMipLevel   = 0,
+				.levelCount     = 1,
+				.baseArrayLayer = 0,
+				.layerCount     = 1,
+			},
+	};
+
+	vk::ImageView imageView;
+	if (device.createImageView(&viewInfo, nullptr, &imageView) != vk::Result::eSuccess) {
+		throw std::runtime_error("failed to create texture image view!");
+	}
+
+	return imageView;
+}
+
 std::vector<vk::ImageView> createImageViews(vk::Device& device,
 											std::vector<vk::Image>& swapchainImages,
 											vk::Format& swapchainImageFormat)
 {
 	std::vector<vk::ImageView> swapchainImageViews;
 	swapchainImageViews.resize(swapchainImages.size());
-	for (size_t i = 0; i < swapchainImages.size(); i++) {
-		vk::ImageViewCreateInfo createInfo{
-			.image    = swapchainImages[i],
-			.viewType = vk::ImageViewType::e2D,
-			.format   = swapchainImageFormat,
-		};
-
-		createInfo.components.r = vk::ComponentSwizzle::eIdentity;
-		createInfo.components.g = vk::ComponentSwizzle::eIdentity;
-		createInfo.components.b = vk::ComponentSwizzle::eIdentity;
-		createInfo.components.a = vk::ComponentSwizzle::eIdentity;
-
-		createInfo.subresourceRange.aspectMask     = vk::ImageAspectFlagBits::eColor;
-		createInfo.subresourceRange.baseMipLevel   = 0;
-		createInfo.subresourceRange.levelCount     = 1;
-		createInfo.subresourceRange.baseArrayLayer = 0;
-		createInfo.subresourceRange.layerCount     = 1;
-
-		if (device.createImageView(&createInfo, nullptr, &swapchainImageViews[i]) != vk::Result::eSuccess) {
-			throw std::runtime_error("failed to create image views!");
-		}
+	for (uint32_t i = 0; i < swapchainImages.size(); i++) {
+		swapchainImageViews[i] = createImageView(device, swapchainImages[i], swapchainImageFormat);
 	}
 	return swapchainImageViews;
 }

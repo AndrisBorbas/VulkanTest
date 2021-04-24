@@ -29,6 +29,7 @@ include_directories(Libraries/glm/glm/ext)
 include_directories(Libraries/glm/glm/gtc)
 include_directories(Libraries/glm/glm/gtx)
 include_directories(Libraries/glm/glm/simd)
+include_directories(Libraries/stb-master)
 include_directories(VulkanTest)
 
 add_executable(VulkanTest
@@ -62,15 +63,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
 
 target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan ${GLFW3_LIBRARY})
 
-#add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E copy_directory
-#        ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/shaders/ $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders)
-#
-#if (WIN32)
-#    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-#            COMMAND cmd /C ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/compileShaders.bat)
-#
-#endif ()
+add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/assets/textures $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets/textures)
 
 include(Shaders.cmake)
 

@@ -1,14 +1,6 @@
 #include "Defines.h"
 
-#define VK_USE_PLATFORM_WIN32_KHR
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-
-#include <vulkan/vulkan.hpp>
-
+#include <stb_image.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -70,6 +62,8 @@ private:
 
 	vk::RenderPass renderPass_;
 	vk::DescriptorSetLayout descriptorSetLayout_;
+	vk::DescriptorPool descriptorPool_;
+	std::vector<vk::DescriptorSet> descriptorSets_;
 	vk::PipelineLayout pipelineLayout_;
 	vk::Pipeline graphicsPipeline_;
 
@@ -83,10 +77,12 @@ private:
 	std::vector<vk::Fence> inFlightFences_;
 	std::vector<vk::Fence> imagesInFlight_;
 
-	const std::vector<Vertex> vertices_  = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                           {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                           {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                           {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+	const std::vector<Vertex> vertices_ = {
+		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+	};
 	const std::vector<uint16_t> indices_ = {0, 1, 2, 2, 3, 0};
 
 	vk::Buffer vertexBuffer_;
@@ -97,8 +93,11 @@ private:
 	std::vector<vk::Buffer> uniformBuffers_;
 	std::vector<vk::DeviceMemory> uniformBuffersMemory_;
 
-	vk::DescriptorPool descriptorPool_;
-	std::vector<vk::DescriptorSet> descriptorSets_;
+	vk::Image textureImage_;
+	vk::DeviceMemory textureImageMemory_;
+
+	vk::ImageView textureImageView_;
+	vk::Sampler textureSampler_;
 
 	size_t currentFrame_ = 0;
 
@@ -144,6 +143,12 @@ private:
 		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, renderPass_,
 						   swapchainExtent_);
 		commandPool_ = createCommandPool(device_, physicalDevice_, surface_);
+
+		std::tie(textureImage_, textureImageMemory_) =
+			createTextureImage(device_, physicalDevice_, "assets/textures/yes.png", STBI_rgb_alpha,
+							   vk::Format::eR8G8B8A8Srgb, graphicsQueue_, commandPool_);
+		textureImageView_ = createImageView(device_, textureImage_, vk::Format::eR8G8B8A8Srgb);
+		textureSampler_   = createTextureSampler(device_, physicalDevice_);
 		createVertexBuffer(device_, physicalDevice_, commandPool_, graphicsQueue_, vertices_, vertexBuffer_,
 						   vertexBufferMemory_);
 		createIndexBuffer(device_, physicalDevice_, commandPool_, graphicsQueue_, indices_, indexBuffer_,
@@ -152,7 +157,7 @@ private:
 							 swapchainImages_);
 		descriptorPool_ = createDescriptorPool(device_, swapchainImages_);
 		createDescriptorSets(device_, descriptorSetLayout_, descriptorSets_, swapchainImages_,
-							 descriptorPool_, uniformBuffers_);
+							 descriptorPool_, uniformBuffers_, textureImageView_, textureSampler_);
 		createCommandBuffers(device_, commandBuffers_, swapChainFramebuffers_, commandPool_, renderPass_,
 							 swapchainExtent_, graphicsPipeline_, vertexBuffer_, indexBuffer_,
 							 pipelineLayout_, descriptorSets_, indices_);
@@ -213,7 +218,7 @@ private:
 							 swapchainImages_);
 		descriptorPool_ = createDescriptorPool(device_, swapchainImages_);
 		createDescriptorSets(device_, descriptorSetLayout_, descriptorSets_, swapchainImages_,
-							 descriptorPool_, uniformBuffers_);
+							 descriptorPool_, uniformBuffers_, textureImageView_, textureSampler_);
 		createCommandBuffers(device_, commandBuffers_, swapChainFramebuffers_, commandPool_, renderPass_,
 							 swapchainExtent_, graphicsPipeline_, vertexBuffer_, indexBuffer_,
 							 pipelineLayout_, descriptorSets_, indices_);
@@ -297,6 +302,12 @@ private:
 	{
 		std::cout << std::endl;
 		cleanupSwapChain();
+
+		device_.destroySampler(textureSampler_, nullptr);
+		device_.destroyImageView(textureImageView_, nullptr);
+
+		device_.destroyImage(textureImage_, nullptr);
+		device_.freeMemory(textureImageMemory_, nullptr);
 
 		device_.destroyDescriptorSetLayout(descriptorSetLayout_, nullptr);
 

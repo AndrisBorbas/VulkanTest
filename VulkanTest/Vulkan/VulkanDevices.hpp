@@ -22,7 +22,7 @@ struct SwapChainSupportDetails
 	std::vector<vk::PresentModeKHR> presentModes;
 };
 
-QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice device, vk::SurfaceKHR surface);
+QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface);
 
 vk::PhysicalDevice pickPhysicalDevice(vk::Instance& instance,
 									  vk::SurfaceKHR& surface,
@@ -44,6 +44,8 @@ vk::SwapchainKHR createSwapChain(vk::Device& device,
 								 vk::Format& swapchainImageFormat,
 								 vk::Extent2D& swapchainExtent,
 								 const vk::PresentModeKHR& preferredPresentMode);
+
+vk::ImageView createImageView(vk::Device& device, vk::Image& image, vk::Format format);
 
 std::vector<vk::ImageView> createImageViews(vk::Device& device,
 											std::vector<vk::Image>& swapchainImages,
