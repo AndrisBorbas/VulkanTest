@@ -344,4 +344,4 @@ Libraries/
 
 cmake-build-release/
 
-!VulkanTest/assets
+!VulkanTest/assets/**/*.obj
