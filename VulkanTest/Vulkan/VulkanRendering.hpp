@@ -13,9 +13,12 @@
 
 vk::ShaderModule createShaderModule(vk::Device device, const std::vector<char>& code);
 
-vk::RenderPass createRenderPass(vk::Device& device, vk::Format& swapchainImageFormat);
+vk::RenderPass createRenderPass(vk::Device& device,
+								vk::PhysicalDevice& physicalDevice,
+								vk::Format& swapchainImageFormat);
 
 vk::DescriptorSetLayout createDescriptorSetLayout(vk::Device& device);
+
 vk::Pipeline createGraphicsPipeline(vk::Device& device,
 
 									vk::Extent2D& swapchainExtent,
@@ -48,6 +51,7 @@ void createUniformBuffers(vk::Device& device,
 void createFramebuffers(vk::Device& device,
 						std::vector<vk::Framebuffer>& swapChainFramebuffers,
 						std::vector<vk::ImageView>& swapchainImageViews,
+						vk::ImageView& depthImageView,
 						vk::RenderPass& renderPass,
 						vk::Extent2D& swapchainExtent);
 
@@ -101,3 +105,10 @@ std::tuple<vk::Image, vk::DeviceMemory> createTextureImage(vk::Device& device,
 														   vk::CommandPool& commandPool);
 
 vk::Sampler createTextureSampler(vk::Device& device, vk::PhysicalDevice& physicalDevice);
+
+std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView> createDepthResources(
+	vk::Device& device,
+	vk::PhysicalDevice& physicalDevice,
+	vk::Extent2D& swapchainExtent,
+	vk::Queue& graphicsQueue,
+	vk::CommandPool& commandPool);

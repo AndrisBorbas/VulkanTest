@@ -45,7 +45,10 @@ vk::SwapchainKHR createSwapChain(vk::Device& device,
 								 vk::Extent2D& swapchainExtent,
 								 const vk::PresentModeKHR& preferredPresentMode);
 
-vk::ImageView createImageView(vk::Device& device, vk::Image& image, vk::Format format);
+vk::ImageView createImageView(vk::Device& device,
+							  vk::Image& image,
+							  vk::Format format,
+							  vk::ImageAspectFlagBits aspectFlags);
 
 std::vector<vk::ImageView> createImageViews(vk::Device& device,
 											std::vector<vk::Image>& swapchainImages,

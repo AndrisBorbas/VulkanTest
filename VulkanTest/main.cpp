@@ -78,12 +78,20 @@ private:
 	std::vector<vk::Fence> imagesInFlight_;
 
 	const std::vector<Vertex> vertices_ = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+		{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+		{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+		{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+		{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 	};
-	const std::vector<uint16_t> indices_ = {0, 1, 2, 2, 3, 0};
+	const std::vector<uint16_t> indices_ = {
+		0, 1, 2, 2, 3, 0,  // 1
+		4, 5, 6, 6, 7, 4,  // 2
+	};
 
 	vk::Buffer vertexBuffer_;
 	vk::DeviceMemory vertexBufferMemory_;
@@ -98,6 +106,10 @@ private:
 
 	vk::ImageView textureImageView_;
 	vk::Sampler textureSampler_;
+
+	vk::Image depthImage_;
+	vk::DeviceMemory depthImageMemory_;
+	vk::ImageView depthImageView_;
 
 	size_t currentFrame_ = 0;
 
@@ -135,19 +147,22 @@ private:
 		swapchain_           = createSwapChain(device_, physicalDevice_, window_, surface_, swapchainImages_,
                                      swapchainImageFormat_, swapchainExtent_, preferredPresentMode);
 		swapchainImageViews_ = createImageViews(device_, swapchainImages_, swapchainImageFormat_);
-		renderPass_          = createRenderPass(device_, swapchainImageFormat_);
+		renderPass_          = createRenderPass(device_, physicalDevice_, swapchainImageFormat_);
 		descriptorSetLayout_ = createDescriptorSetLayout(device_);
 		graphicsPipeline_    = createGraphicsPipeline(device_, swapchainExtent_, descriptorSetLayout_,
                                                    pipelineLayout_, renderPass_);
 
-		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, renderPass_,
-						   swapchainExtent_);
 		commandPool_ = createCommandPool(device_, physicalDevice_, surface_);
 
+		std::tie(depthImage_, depthImageMemory_, depthImageView_) =
+			createDepthResources(device_, physicalDevice_, swapchainExtent_, graphicsQueue_, commandPool_);
+		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, depthImageView_,
+						   renderPass_, swapchainExtent_);
 		std::tie(textureImage_, textureImageMemory_) =
 			createTextureImage(device_, physicalDevice_, "assets/textures/yes.png", STBI_rgb_alpha,
 							   vk::Format::eR8G8B8A8Srgb, graphicsQueue_, commandPool_);
-		textureImageView_ = createImageView(device_, textureImage_, vk::Format::eR8G8B8A8Srgb);
+		textureImageView_ = createImageView(device_, textureImage_, vk::Format::eR8G8B8A8Srgb,
+											vk::ImageAspectFlagBits::eColor);
 		textureSampler_   = createTextureSampler(device_, physicalDevice_);
 		createVertexBuffer(device_, physicalDevice_, commandPool_, graphicsQueue_, vertices_, vertexBuffer_,
 						   vertexBufferMemory_);
@@ -209,11 +224,13 @@ private:
 		swapchain_           = createSwapChain(device_, physicalDevice_, window_, surface_, swapchainImages_,
                                      swapchainImageFormat_, swapchainExtent_, preferredPresentMode);
 		swapchainImageViews_ = createImageViews(device_, swapchainImages_, swapchainImageFormat_);
-		renderPass_          = createRenderPass(device_, swapchainImageFormat_);
+		renderPass_          = createRenderPass(device_, physicalDevice_, swapchainImageFormat_);
 		graphicsPipeline_    = createGraphicsPipeline(device_, swapchainExtent_, descriptorSetLayout_,
                                                    pipelineLayout_, renderPass_);
-		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, renderPass_,
-						   swapchainExtent_);
+		std::tie(depthImage_, depthImageMemory_, depthImageView_) =
+			createDepthResources(device_, physicalDevice_, swapchainExtent_, graphicsQueue_, commandPool_);
+		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, depthImageView_,
+						   renderPass_, swapchainExtent_);
 		createUniformBuffers(device_, physicalDevice_, uniformBuffers_, uniformBuffersMemory_,
 							 swapchainImages_);
 		descriptorPool_ = createDescriptorPool(device_, swapchainImages_);
@@ -301,6 +318,10 @@ private:
 	void cleanup()
 	{
 		std::cout << std::endl;
+		device_.destroyImageView(depthImageView_, nullptr);
+		device_.destroyImage(depthImage_, nullptr);
+		device_.freeMemory(depthImageMemory_, nullptr);
+
 		cleanupSwapChain();
 
 		device_.destroySampler(textureSampler_, nullptr);

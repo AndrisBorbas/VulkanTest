@@ -298,7 +298,7 @@ vk::SwapchainKHR createSwapChain(vk::Device& device,
 	const vk::SurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
 	const vk::Extent2D extent                = chooseSwapExtent(swapChainSupport.capabilities, window);
 
-	std::cout << std::endl << to_string(presentMode) << std::endl;
+	std::cout << std::endl << "Present mode:" << to_string(presentMode) << std::endl;
 
 	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 
@@ -351,7 +351,10 @@ vk::SwapchainKHR createSwapChain(vk::Device& device,
 	return swapchain;
 }
 
-vk::ImageView createImageView(vk::Device& device, vk::Image& image, vk::Format format)
+vk::ImageView createImageView(vk::Device& device,
+							  vk::Image& image,
+							  vk::Format format,
+							  vk::ImageAspectFlagBits aspectFlags)
 {
 	vk::ImageViewCreateInfo viewInfo{
 		.image    = image,
@@ -359,7 +362,7 @@ vk::ImageView createImageView(vk::Device& device, vk::Image& image, vk::Format f
 		.format   = format,
 		.subresourceRange =
 			{
-				.aspectMask     = vk::ImageAspectFlagBits::eColor,
+				.aspectMask     = aspectFlags,
 				.baseMipLevel   = 0,
 				.levelCount     = 1,
 				.baseArrayLayer = 0,
@@ -382,7 +385,8 @@ std::vector<vk::ImageView> createImageViews(vk::Device& device,
 	std::vector<vk::ImageView> swapchainImageViews;
 	swapchainImageViews.resize(swapchainImages.size());
 	for (uint32_t i = 0; i < swapchainImages.size(); i++) {
-		swapchainImageViews[i] = createImageView(device, swapchainImages[i], swapchainImageFormat);
+		swapchainImageViews[i] = createImageView(device, swapchainImages[i], swapchainImageFormat,
+												 vk::ImageAspectFlagBits::eColor);
 	}
 	return swapchainImageViews;
 }
