@@ -13,6 +13,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 
 #include "Shaders.hpp"
@@ -243,6 +244,8 @@ private:
 			throw std::runtime_error(warn + err);
 		}
 
+		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
 		for (const auto& shape : shapes) {
 			for (const auto& index : shape.mesh.indices) {
 				Vertex vertex{};
@@ -260,8 +263,11 @@ private:
 
 				vertex.color = {1.0f, 1.0f, 1.0f};
 
-				vertices_.push_back(vertex);
-				indices_.push_back(indices_.size());
+				if (uniqueVertices.count(vertex) == 0) {
+					uniqueVertices[vertex] = static_cast<uint32_t>(vertices_.size());
+					vertices_.push_back(vertex);
+				}
+				indices_.push_back(uniqueVertices[vertex]);
 			}
 		}
 	}
