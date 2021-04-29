@@ -26,7 +26,8 @@ QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice physicalDevice, vk
 
 vk::PhysicalDevice pickPhysicalDevice(vk::Instance& instance,
 									  vk::SurfaceKHR& surface,
-									  const std::vector<const char*>& deviceExtensions);
+									  const std::vector<const char*>& deviceExtensions,
+									  vk::SampleCountFlagBits& msaaSamples);
 
 vk::Device createLogicalDevice(vk::Instance& instance,
 							   vk::SurfaceKHR& surface,
@@ -48,8 +49,10 @@ vk::SwapchainKHR createSwapChain(vk::Device& device,
 vk::ImageView createImageView(vk::Device& device,
 							  vk::Image& image,
 							  vk::Format format,
-							  vk::ImageAspectFlagBits aspectFlags);
+							  vk::ImageAspectFlagBits aspectFlags,
+							  uint32_t mipLevels);
 
 std::vector<vk::ImageView> createImageViews(vk::Device& device,
 											std::vector<vk::Image>& swapchainImages,
-											vk::Format& swapchainImageFormat);
+											vk::Format& swapchainImageFormat,
+											uint32_t mipLevels);

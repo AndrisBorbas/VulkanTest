@@ -71,6 +71,8 @@ private:
 	vk::PipelineLayout pipelineLayout_;
 	vk::Pipeline graphicsPipeline_;
 
+	vk::SampleCountFlagBits msaaSamples_ = vk::SampleCountFlagBits::e1;
+
 	std::vector<vk::Framebuffer> swapChainFramebuffers_;
 
 	vk::CommandPool commandPool_;
@@ -80,6 +82,10 @@ private:
 	std::vector<vk::Semaphore> renderFinishedSemaphores_;
 	std::vector<vk::Fence> inFlightFences_;
 	std::vector<vk::Fence> imagesInFlight_;
+
+	vk::Image colorImage_;
+	vk::DeviceMemory colorImageMemory_;
+	vk::ImageView colorImageView_;
 
 	std::vector<Vertex> vertices_;
 	std::vector<uint32_t> indices_;
@@ -92,6 +98,7 @@ private:
 	std::vector<vk::Buffer> uniformBuffers_;
 	std::vector<vk::DeviceMemory> uniformBuffersMemory_;
 
+	uint32_t mipLevels_;
 	vk::Image textureImage_;
 	vk::DeviceMemory textureImageMemory_;
 
@@ -131,30 +138,32 @@ private:
 
 		surface_ = createSurface(instance_, window_);
 
-		physicalDevice_ = pickPhysicalDevice(instance_, surface_, deviceExtensions);
+		physicalDevice_ = pickPhysicalDevice(instance_, surface_, deviceExtensions, msaaSamples_);
 		device_ = createLogicalDevice(instance_, surface_, physicalDevice_, graphicsQueue_, presentQueue_,
 									  deviceExtensions, validationLayers);
 
 		swapchain_           = createSwapChain(device_, physicalDevice_, window_, surface_, swapchainImages_,
                                      swapchainImageFormat_, swapchainExtent_, preferredPresentMode);
-		swapchainImageViews_ = createImageViews(device_, swapchainImages_, swapchainImageFormat_);
-		renderPass_          = createRenderPass(device_, physicalDevice_, swapchainImageFormat_);
+		swapchainImageViews_ = createImageViews(device_, swapchainImages_, swapchainImageFormat_, 1);
+		renderPass_ = createRenderPass(device_, physicalDevice_, swapchainImageFormat_, msaaSamples_);
 		descriptorSetLayout_ = createDescriptorSetLayout(device_);
 		graphicsPipeline_    = createGraphicsPipeline(device_, swapchainExtent_, descriptorSetLayout_,
-                                                   pipelineLayout_, renderPass_);
+                                                   pipelineLayout_, renderPass_, msaaSamples_);
 
 		commandPool_ = createCommandPool(device_, physicalDevice_, surface_);
 		loadModel("assets/models/viking_room.obj");
-		std::tie(depthImage_, depthImageMemory_, depthImageView_) =
-			createDepthResources(device_, physicalDevice_, swapchainExtent_, graphicsQueue_, commandPool_);
-		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, depthImageView_,
-						   renderPass_, swapchainExtent_);
+		std::tie(colorImage_, colorImageMemory_, colorImageView_) = createColorResources(
+			device_, physicalDevice_, swapchainImageFormat_, swapchainExtent_, msaaSamples_);
+		std::tie(depthImage_, depthImageMemory_, depthImageView_) = createDepthResources(
+			device_, physicalDevice_, swapchainExtent_, graphicsQueue_, commandPool_, msaaSamples_);
+		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, colorImageView_,
+						   depthImageView_, renderPass_, swapchainExtent_);
 		std::tie(textureImage_, textureImageMemory_) =
 			createTextureImage(device_, physicalDevice_, "assets/textures/viking_room.png", STBI_rgb_alpha,
-							   vk::Format::eR8G8B8A8Srgb, graphicsQueue_, commandPool_);
+							   mipLevels_, vk::Format::eR8G8B8A8Srgb, graphicsQueue_, commandPool_);
 		textureImageView_ = createImageView(device_, textureImage_, vk::Format::eR8G8B8A8Srgb,
-											vk::ImageAspectFlagBits::eColor);
-		textureSampler_   = createTextureSampler(device_, physicalDevice_);
+											vk::ImageAspectFlagBits::eColor, mipLevels_);
+		textureSampler_   = createTextureSampler(device_, physicalDevice_, mipLevels_);
 
 		createVertexBuffer(device_, physicalDevice_, commandPool_, graphicsQueue_, vertices_, vertexBuffer_,
 						   vertexBufferMemory_);
@@ -175,6 +184,14 @@ private:
 
 	void cleanupSwapChain()
 	{
+		device_.destroyImageView(colorImageView_, nullptr);
+		device_.destroyImage(colorImage_, nullptr);
+		device_.freeMemory(colorImageMemory_, nullptr);
+
+		device_.destroyImageView(depthImageView_, nullptr);
+		device_.destroyImage(depthImage_, nullptr);
+		device_.freeMemory(depthImageMemory_, nullptr);
+
 		for (auto& swapChainFramebuffer : swapChainFramebuffers_) {
 			device_.destroyFramebuffer(swapChainFramebuffer, nullptr);
 		}
@@ -215,14 +232,16 @@ private:
 
 		swapchain_           = createSwapChain(device_, physicalDevice_, window_, surface_, swapchainImages_,
                                      swapchainImageFormat_, swapchainExtent_, preferredPresentMode);
-		swapchainImageViews_ = createImageViews(device_, swapchainImages_, swapchainImageFormat_);
-		renderPass_          = createRenderPass(device_, physicalDevice_, swapchainImageFormat_);
-		graphicsPipeline_    = createGraphicsPipeline(device_, swapchainExtent_, descriptorSetLayout_,
-                                                   pipelineLayout_, renderPass_);
-		std::tie(depthImage_, depthImageMemory_, depthImageView_) =
-			createDepthResources(device_, physicalDevice_, swapchainExtent_, graphicsQueue_, commandPool_);
-		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, depthImageView_,
-						   renderPass_, swapchainExtent_);
+		swapchainImageViews_ = createImageViews(device_, swapchainImages_, swapchainImageFormat_, 1);
+		renderPass_       = createRenderPass(device_, physicalDevice_, swapchainImageFormat_, msaaSamples_);
+		graphicsPipeline_ = createGraphicsPipeline(device_, swapchainExtent_, descriptorSetLayout_,
+												   pipelineLayout_, renderPass_, msaaSamples_);
+		std::tie(colorImage_, colorImageMemory_, colorImageView_) = createColorResources(
+			device_, physicalDevice_, swapchainImageFormat_, swapchainExtent_, msaaSamples_);
+		std::tie(depthImage_, depthImageMemory_, depthImageView_) = createDepthResources(
+			device_, physicalDevice_, swapchainExtent_, graphicsQueue_, commandPool_, msaaSamples_);
+		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, colorImageView_,
+						   depthImageView_, renderPass_, swapchainExtent_);
 		createUniformBuffers(device_, physicalDevice_, uniformBuffers_, uniformBuffersMemory_,
 							 swapchainImages_);
 		descriptorPool_ = createDescriptorPool(device_, swapchainImages_);
@@ -349,10 +368,6 @@ private:
 	void cleanup()
 	{
 		std::cout << std::endl;
-		device_.destroyImageView(depthImageView_, nullptr);
-		device_.destroyImage(depthImage_, nullptr);
-		device_.freeMemory(depthImageMemory_, nullptr);
-
 		cleanupSwapChain();
 
 		device_.destroySampler(textureSampler_, nullptr);

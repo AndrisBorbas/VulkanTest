@@ -44,6 +44,23 @@ QueueFamilyIndices findQueueFamilies(const vk::PhysicalDevice physicalDevice, vk
 	return indices;
 }
 
+vk::SampleCountFlagBits getMaxUsableSampleCount(vk::PhysicalDevice& physicalDevice)
+{
+	vk::PhysicalDeviceProperties physicalDeviceProperties;
+	physicalDevice.getProperties(&physicalDeviceProperties);
+
+	vk::SampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts
+								  & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+	if (counts & vk::SampleCountFlagBits::e64) return vk::SampleCountFlagBits::e64;
+	if (counts & vk::SampleCountFlagBits::e32) return vk::SampleCountFlagBits::e32;
+	if (counts & vk::SampleCountFlagBits::e16) return vk::SampleCountFlagBits::e16;
+	if (counts & vk::SampleCountFlagBits::e8) return vk::SampleCountFlagBits::e8;
+	if (counts & vk::SampleCountFlagBits::e4) return vk::SampleCountFlagBits::e4;
+	if (counts & vk::SampleCountFlagBits::e2) return vk::SampleCountFlagBits::e2;
+
+	return vk::SampleCountFlagBits::e1;
+}
+
 bool checkDeviceExtensionSupport(const vk::PhysicalDevice& device,
 								 const std::vector<const char*>& deviceExtensions)
 {
@@ -148,7 +165,8 @@ int rateDeviceSuitability(const vk::PhysicalDevice& device,
 
 vk::PhysicalDevice pickPhysicalDevice(vk::Instance& instance,
 									  vk::SurfaceKHR& surface,
-									  const std::vector<const char*>& deviceExtensions)
+									  const std::vector<const char*>& deviceExtensions,
+									  vk::SampleCountFlagBits& msaaSamples)
 {
 	uint32_t deviceCount = 0;
 	instance.enumeratePhysicalDevices(&deviceCount, nullptr);
@@ -163,6 +181,7 @@ vk::PhysicalDevice pickPhysicalDevice(vk::Instance& instance,
 
 	for (const auto& item : devices) {
 		int score = rateDeviceSuitability(item, surface, deviceExtensions);
+
 		candidates.insert(std::make_pair(score, item));
 	}
 
@@ -175,6 +194,10 @@ vk::PhysicalDevice pickPhysicalDevice(vk::Instance& instance,
 	} else {
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
+
+	msaaSamples = getMaxUsableSampleCount(physicalDevice);
+
+	std::cout << "msaa: " << to_string(msaaSamples);
 
 	return physicalDevice;
 }
@@ -201,6 +224,7 @@ vk::Device createLogicalDevice(vk::Instance& instance,
 	}
 
 	vk::PhysicalDeviceFeatures deviceFeatures{
+		.sampleRateShading = VK_TRUE,
 		.samplerAnisotropy = VK_TRUE,
 	};
 
@@ -354,7 +378,8 @@ vk::SwapchainKHR createSwapChain(vk::Device& device,
 vk::ImageView createImageView(vk::Device& device,
 							  vk::Image& image,
 							  vk::Format format,
-							  vk::ImageAspectFlagBits aspectFlags)
+							  vk::ImageAspectFlagBits aspectFlags,
+							  uint32_t mipLevels)
 {
 	vk::ImageViewCreateInfo viewInfo{
 		.image    = image,
@@ -364,7 +389,7 @@ vk::ImageView createImageView(vk::Device& device,
 			{
 				.aspectMask     = aspectFlags,
 				.baseMipLevel   = 0,
-				.levelCount     = 1,
+				.levelCount     = mipLevels,
 				.baseArrayLayer = 0,
 				.layerCount     = 1,
 			},
@@ -380,13 +405,14 @@ vk::ImageView createImageView(vk::Device& device,
 
 std::vector<vk::ImageView> createImageViews(vk::Device& device,
 											std::vector<vk::Image>& swapchainImages,
-											vk::Format& swapchainImageFormat)
+											vk::Format& swapchainImageFormat,
+											uint32_t mipLevels)
 {
 	std::vector<vk::ImageView> swapchainImageViews;
 	swapchainImageViews.resize(swapchainImages.size());
 	for (uint32_t i = 0; i < swapchainImages.size(); i++) {
 		swapchainImageViews[i] = createImageView(device, swapchainImages[i], swapchainImageFormat,
-												 vk::ImageAspectFlagBits::eColor);
+												 vk::ImageAspectFlagBits::eColor, mipLevels);
 	}
 	return swapchainImageViews;
 }

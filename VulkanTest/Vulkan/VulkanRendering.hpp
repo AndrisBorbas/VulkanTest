@@ -15,16 +15,17 @@ vk::ShaderModule createShaderModule(vk::Device device, const std::vector<char>& 
 
 vk::RenderPass createRenderPass(vk::Device& device,
 								vk::PhysicalDevice& physicalDevice,
-								vk::Format& swapchainImageFormat);
+								vk::Format& swapchainImageFormat,
+								vk::SampleCountFlagBits msaaSamples);
 
 vk::DescriptorSetLayout createDescriptorSetLayout(vk::Device& device);
 
 vk::Pipeline createGraphicsPipeline(vk::Device& device,
-
 									vk::Extent2D& swapchainExtent,
 									vk::DescriptorSetLayout& descriptorSetLayout,
 									vk::PipelineLayout& pipelineLayout,
-									vk::RenderPass& renderPass);
+									vk::RenderPass& renderPass,
+									vk::SampleCountFlagBits msaaSamples);
 
 void createVertexBuffer(vk::Device& device,
 						vk::PhysicalDevice& physicalDevice,
@@ -51,6 +52,7 @@ void createUniformBuffers(vk::Device& device,
 void createFramebuffers(vk::Device& device,
 						std::vector<vk::Framebuffer>& swapChainFramebuffers,
 						std::vector<vk::ImageView>& swapchainImageViews,
+						vk::ImageView& colorImageView,
 						vk::ImageView& depthImageView,
 						vk::RenderPass& renderPass,
 						vk::Extent2D& swapchainExtent);
@@ -100,15 +102,24 @@ std::tuple<vk::Image, vk::DeviceMemory> createTextureImage(vk::Device& device,
 														   vk::PhysicalDevice& physicalDevice,
 														   const char* filename,
 														   int stbiChannels,
+														   uint32_t& mipLevels,
 														   vk::Format format,
 														   vk::Queue& graphicsQueue,
 														   vk::CommandPool& commandPool);
 
-vk::Sampler createTextureSampler(vk::Device& device, vk::PhysicalDevice& physicalDevice);
+vk::Sampler createTextureSampler(vk::Device& device, vk::PhysicalDevice& physicalDevice, uint32_t mipLevels);
 
 std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView> createDepthResources(
 	vk::Device& device,
 	vk::PhysicalDevice& physicalDevice,
 	vk::Extent2D& swapchainExtent,
 	vk::Queue& graphicsQueue,
-	vk::CommandPool& commandPool);
+	vk::CommandPool& commandPool,
+	vk::SampleCountFlagBits msaaSamples);
+
+std::tuple<vk::Image, vk::DeviceMemory, vk::ImageView> createColorResources(
+	vk::Device& device,
+	vk::PhysicalDevice& physicalDevice,
+	vk::Format& swapchainImageFormat,
+	vk::Extent2D& swapchainExtent,
+	vk::SampleCountFlagBits msaaSamples);
