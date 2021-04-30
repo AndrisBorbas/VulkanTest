@@ -260,6 +260,7 @@ private:
 
 		createSyncObjects(device_, imageAvailableSemaphores_, renderFinishedSemaphores_, inFlightFences_,
 						  imagesInFlight_, MAX_FRAMES_IN_FLIGHT, swapchainImages_);
+		initImgui();
 	}
 
 	void cleanupSwapChain()
@@ -447,6 +448,46 @@ private:
 		}
 
 		ImGui::Render();
+
+		for (size_t i = 0; i < commandBuffers_.size(); i++) {
+			vk::CommandBufferBeginInfo beginInfo{};
+			if (commandBuffers_[i].begin(&beginInfo) != vk::Result::eSuccess) {
+				throw std::runtime_error("failed to begin recording command buffer!");
+			}
+
+			std::array<vk::ClearValue, 2> clearValues{};
+			clearValues[0].setColor(std::array<float, 4>{0.01f, 0.01f, 0.0125f, 0.0f});
+			clearValues[1].setDepthStencil({1.0f, 0});
+
+			vk::RenderPassBeginInfo renderPassInfo{
+				.renderPass      = renderPass_,
+				.framebuffer     = swapChainFramebuffers_[i],
+				.clearValueCount = static_cast<uint32_t>(clearValues.size()),
+				.pClearValues    = clearValues.data()};
+
+			renderPassInfo.renderArea.offset = VkOffset2D{0, 0};
+			renderPassInfo.renderArea.extent = swapchainExtent_;
+
+			commandBuffers_[i].beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
+
+			commandBuffers_[i].bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline_);
+
+			vk::Buffer vertexBuffers[] = {vertexBuffer_};
+			vk::DeviceSize offsets[]   = {0};
+			commandBuffers_[i].bindVertexBuffers(0, 1, vertexBuffers, offsets);
+			commandBuffers_[i].bindIndexBuffer(indexBuffer_, 0, vk::IndexType::eUint32);
+
+			commandBuffers_[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout_, 0, 1,
+												  &descriptorSets_[i], 0, nullptr);
+			commandBuffers_[i].drawIndexed(static_cast<uint32_t>(indices_.size()), 1, 0, 0, 0);
+
+			ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffers_[i]);
+
+			commandBuffers_[i].endRenderPass();
+
+			// Presumably has built in fail check
+			commandBuffers_[i].end();
+		}
 
 		vk::Semaphore waitSemaphores[]      = {imageAvailableSemaphores_[currentFrame_]};
 		vk::Semaphore signalSemaphores[]    = {renderFinishedSemaphores_[currentFrame_]};
