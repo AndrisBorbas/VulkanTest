@@ -88,7 +88,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ENABLE_VALIDATION_LAYERS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;D:\Projects\Programming\c++\VulkanTest\Libraries\tinyobjloader-master;D:\Projects\Programming\c++\VulkanTest\Libraries\stb-master;D:\Projects\Programming\c++\VulkanTest\Libraries\imgui;D:\Projects\Programming\c++\VulkanTest\Libraries;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>
       </MultiProcessorCompilation>
@@ -112,7 +112,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;D:\Projects\Programming\c++\VulkanTest\Libraries\tinyobjloader-master;D:\Projects\Programming\c++\VulkanTest\Libraries\stb-master;D:\Projects\Programming\c++\VulkanTest\Libraries\imgui;D:\Projects\Programming\c++\VulkanTest\Libraries;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>
       </MultiProcessorCompilation>
@@ -137,7 +137,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>ENABLE_VALIDATION_LAYERS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;D:\Projects\Programming\c++\VulkanTest\Libraries\tinyobjloader-master;D:\Projects\Programming\c++\VulkanTest\Libraries\stb-master;D:\Projects\Programming\c++\VulkanTest\Libraries\imgui;D:\Projects\Programming\c++\VulkanTest\Libraries;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>
       </MultiProcessorCompilation>
@@ -161,7 +161,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\SDKs\VulkanSDK\1.2.170.0\Include;C:\SDKs\glfw-3.3.4.bin.WIN64\include;C:\SDKs\glm;D:\Projects\Programming\c++\VulkanTest\Libraries\tinyobjloader-master;D:\Projects\Programming\c++\VulkanTest\Libraries\stb-master;D:\Projects\Programming\c++\VulkanTest\Libraries\imgui;D:\Projects\Programming\c++\VulkanTest\Libraries;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>
       </MultiProcessorCompilation>
@@ -181,6 +181,13 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Libraries\imgui\imgui.cpp" />
+    <ClCompile Include="..\Libraries\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\Libraries\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\Libraries\imgui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="..\Libraries\imgui\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="..\Libraries\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\Libraries\imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Shaders.cpp" />
     <ClCompile Include="Vulkan\VulkanDevices.cpp" />
@@ -192,6 +199,14 @@
     <None Include="shaders\shader.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Libraries\imgui\imconfig.h" />
+    <ClInclude Include="..\Libraries\imgui\imgui.h" />
+    <ClInclude Include="..\Libraries\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="..\Libraries\imgui\imgui_impl_vulkan.h" />
+    <ClInclude Include="..\Libraries\imgui\imgui_internal.h" />
+    <ClInclude Include="..\Libraries\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\Libraries\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\Libraries\imgui\imstb_truetype.h" />
     <ClInclude Include="Defines.h" />
     <ClInclude Include="Shaders.hpp" />
     <ClInclude Include="utils.hpp" />
