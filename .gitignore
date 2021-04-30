@@ -340,7 +340,17 @@ ASALocalRun/
 healthchecksdb
 cmake-build-debug/
 
-Libraries/
-
 cmake-build-release/
 
+Libraries/**/[Dd]oc*
+Libraries/**/[Tt]est*
+Libraries/**/[Ee]xperimental*
+Libraries/**/[Tt]ools*
+Libraries/**/[Mm]odels*
+
+Libraries/tinyobjloader-master
+!Libraries/tinyobjloader-master/tiny_obj_loader.cc
+!Libraries/tinyobjloader-master/tiny_obj_loader.h
+
+Libraries/stb-master
+!Libraries/stb-master/stb_image.h
