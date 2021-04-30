@@ -20,19 +20,23 @@ target_sources(tinyobjloader PRIVATE
 target_include_directories(tinyobjloader PUBLIC tinyobjloader-master)
 
 add_library(imgui STATIC)
-target_include_directories(imgui PUBLIC "imgui-1.82")
-target_include_directories(imgui PUBLIC "imgui-1.82/backends")
+target_include_directories(imgui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/imgui")
+
+file(GLOB sources **/*.cpp)
+
+message("${sources}")
+
 target_sources(imgui PRIVATE
-        "imgui-1.82/backends/imgui_impl_vulkan.cpp"
-        "imgui-1.82/backends/imgui_impl_glfw.cpp"
+        "${sources}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_impl_vulkan.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_impl_glfw.cpp"
 
-        "imgui-1.82/imgui.h"
-        "imgui-1.82/imgui.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_internal.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui.cpp"
 
-        "imgui-1.82/imgui_demo.cpp"
-        "imgui-1.82/imgui_draw.cpp"
-        "imgui-1.82/imgui_widgets.cpp"
-
-
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_demo.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_draw.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/imgui/imgui_widgets.cpp"
         )
 target_link_libraries(imgui PUBLIC "glfw;Vulkan::Vulkan")

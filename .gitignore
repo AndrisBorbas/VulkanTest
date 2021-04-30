@@ -347,3 +347,4 @@ cmake-build-release/
 !VulkanTest/assets/**/*.obj
 
 !Libraries/CMakeLists.txt
+!Libraries/imgui

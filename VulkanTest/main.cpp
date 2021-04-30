@@ -477,6 +477,8 @@ private:
 									   .pImageIndices      = &imageIndex,
 									   .pResults           = nullptr};
 
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffers_[imageIndex]);
+
 		result = presentQueue_.presentKHR(&presentInfo);
 
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR
@@ -486,8 +488,6 @@ private:
 		} else if (result != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to present swap chain image!");
 		}
-
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffers_[0]);
 
 		currentFrame_ = (currentFrame_ + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
