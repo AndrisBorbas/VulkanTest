@@ -20,17 +20,8 @@ endif ()
 
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(Libraries/glfw-3.3.4.bin.WIN64)
-include_directories(Libraries/glfw-3.3.4.bin.WIN64/include)
-include_directories(Libraries/glfw-3.3.4.bin.WIN64/include/GLFW)
-include_directories(Libraries/glm/glm)
-include_directories(Libraries/glm/glm/detail)
-include_directories(Libraries/glm/glm/ext)
-include_directories(Libraries/glm/glm/gtc)
-include_directories(Libraries/glm/glm/gtx)
-include_directories(Libraries/glm/glm/simd)
-include_directories(Libraries/stb-master)
-include_directories(Libraries/tinyobjloader-master)
+add_subdirectory(Libraries)
+
 include_directories(VulkanTest)
 
 add_executable(VulkanTest
@@ -46,25 +37,16 @@ add_executable(VulkanTest
         VulkanTest/Defines.h
         VulkanTest/Vulkan/VulkanDevices.cpp)
 
-### GLFW
-set(GLFW3_LIBRARY C:/SDKs/glfw-3.3.4.bin.WIN64/lib-vc2019/glfw3.lib)
-include_directories(${PROJECT_NAME} C:/SDKs/glfw-3.3.4.bin.WIN64/include)
-
-
-####  GLM
-set(GLM_INCLUDE_DIRS C:/SDKs/glm)
-include_directories(${GLM_INCLUDE_DIRS})
-
 ####Vulkan
 find_package(Vulkan REQUIRED)
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} glm tinyobjloader stb_image imgui)
+target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan glfw)
 
-target_link_libraries(${PROJECT_NAME} Vulkan::Vulkan ${GLFW3_LIBRARY})
 
 add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/assets $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets)
-
 
 include(Shaders.cmake)
 

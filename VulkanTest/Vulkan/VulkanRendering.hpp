@@ -27,6 +27,12 @@ vk::Pipeline createGraphicsPipeline(vk::Device& device,
 									vk::RenderPass& renderPass,
 									vk::SampleCountFlagBits msaaSamples);
 
+vk::CommandBuffer beginSingleTimeCommands(vk::Device& device, vk::CommandPool& commandPool);
+void endSingleTimeCommands(vk::Device& device,
+						   vk::CommandBuffer& commandBuffer,
+						   vk::Queue& graphicsQueue,
+						   vk::CommandPool& commandPool);
+
 void createVertexBuffer(vk::Device& device,
 						vk::PhysicalDevice& physicalDevice,
 						vk::CommandPool& commandPool,

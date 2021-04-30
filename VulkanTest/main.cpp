@@ -16,11 +16,18 @@
 #include <unordered_map>
 #include <vector>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 #include "Shaders.hpp"
 #include "Vulkan/VulkanDevices.hpp"
 #include "Vulkan/VulkanInit.hpp"
 #include "Vulkan/VulkanRendering.hpp"
 #include "utils.hpp"
+
+#if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
+#pragma comment(lib, "legacy_stdio_definitions")
+#endif
 
 const uint32_t WIDTH  = 800;
 const uint32_t HEIGHT = 600;
@@ -45,6 +52,11 @@ public:
 
 private:
 	GLFWwindow* window_;
+
+	ImGui_ImplVulkanH_Window MainWindowData_;
+	bool show_demo_window    = true;
+	bool show_another_window = false;
+	ImVec4 clear_color       = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	vk::Instance instance_;
 
@@ -129,6 +141,74 @@ private:
 	{
 		auto* app                = static_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
 		app->framebufferResized_ = true;
+	}
+
+	void initImgui()
+	{
+		std::array<vk::DescriptorPoolSize, 11> poolSizes = {{
+			{vk::DescriptorType::eSampler, 1000},
+			{vk::DescriptorType::eCombinedImageSampler, 1000},
+			{vk::DescriptorType::eSampledImage, 1000},
+			{vk::DescriptorType::eStorageImage, 1000},
+			{vk::DescriptorType::eUniformTexelBuffer, 1000},
+			{vk::DescriptorType::eStorageTexelBuffer, 1000},
+			{vk::DescriptorType::eUniformBuffer, 1000},
+			{vk::DescriptorType::eStorageBuffer, 1000},
+			{vk::DescriptorType::eUniformBufferDynamic, 1000},
+			{vk::DescriptorType::eStorageBufferDynamic, 1000},
+			{vk::DescriptorType::eInputAttachment, 1000},
+		}};
+
+		vk::DescriptorPoolCreateInfo pool_info = {
+			.flags         = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+			.maxSets       = 1000,
+			.poolSizeCount = poolSizes.size(),
+			.pPoolSizes    = poolSizes.data(),
+		};
+
+		vk::DescriptorPool imguiPool;
+		if (device_.createDescriptorPool(&pool_info, nullptr, &imguiPool) != vk::Result::eSuccess) {
+			throw std::runtime_error("failed to create imgui descriptor pool!");
+		}
+
+		// 2: initialize imgui library
+
+		// this initializes the core structures of imgui
+		ImGui::CreateContext();
+
+		ImGui_ImplGlfw_InitForVulkan(window_, true);
+
+		// this initializes imgui for Vulkan
+		ImGui_ImplVulkan_InitInfo init_info = {
+			.Instance       = instance_,
+			.PhysicalDevice = physicalDevice_,
+			.Device         = device_,
+			//.QueueFamily     = g_QueueFamily,
+			.Queue = graphicsQueue_,
+			//.PipelineCache   = g_PipelineCache,
+			.DescriptorPool = imguiPool,
+			.MinImageCount  = 3,
+			.ImageCount     = 3,
+			.Allocator      = nullptr,
+			//.CheckVkResultFn = check_vk_result,
+		};
+
+		ImGui_ImplVulkan_Init(&init_info, renderPass_);
+
+		// execute a gpu command to upload imgui font textures
+		// immediate_submit([&](VkCommandBuffer cmd) { ImGui_ImplVulkan_CreateFontsTexture(cmd); });
+
+		vk::CommandBuffer commandBuffer = beginSingleTimeCommands(device_, commandPool_);
+		ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+		endSingleTimeCommands(device_, commandBuffer, graphicsQueue_, commandPool_);
+
+		// clear font textures from cpu data
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+		// add the destroy the imgui created structures
+
+		// device_.destroyDescriptorPool( imguiPool, nullptr);
+		// ImGui_ImplVulkan_Shutdown();
 	}
 
 	void initVulkan()
@@ -225,6 +305,10 @@ private:
 			glfwGetFramebufferSize(window_, &width, &height);
 			glfwWaitEvents();
 		}
+
+		ImGui_ImplVulkan_SetMinImageCount(3);
+		ImGui_ImplVulkanH_CreateOrResizeWindow(instance_, physicalDevice_, device_, &MainWindowData_,
+											   (uint32_t)-1, nullptr, width, height, 3);
 
 		vkDeviceWaitIdle(device_);
 
@@ -323,6 +407,47 @@ private:
 		// Mark the image as now being in use by this frame
 		imagesInFlight_[imageIndex] = inFlightFences_[currentFrame_];
 
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+
+		{
+			static float f     = 0.0f;
+			static int counter = 0;
+
+			ImGui::Begin("Hello, world!");  // Create a window called "Hello, world!" and append into it.
+
+			ImGui::Text("This is some useful text.");  // Display some text (you can use a format strings too)
+			ImGui::Checkbox("Demo Window",
+							&show_demo_window);  // Edit bools storing our window open/close state
+			ImGui::Checkbox("Another Window", &show_another_window);
+
+			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);  // Edit 1 float using a slider from 0.0f to 1.0f
+			ImGui::ColorEdit3("clear color", (float*)&clear_color);  // Edit 3 floats representing a color
+
+			if (ImGui::Button("Button"))  // Buttons return true when clicked (most widgets return true when
+										  // edited/activated)
+				counter++;
+			ImGui::SameLine();
+			ImGui::Text("counter = %d", counter);
+
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+						ImGui::GetIO().Framerate);
+			ImGui::End();
+		}
+		if (show_another_window) {
+			ImGui::Begin("Another Window",
+						 &show_another_window);  // Pass a pointer to our bool variable (the window will have
+												 // a closing button that will clear the bool when clicked)
+			ImGui::Text("Hello from another window!");
+			if (ImGui::Button("Close Me")) show_another_window = false;
+			ImGui::End();
+		}
+
+		ImGui::Render();
+
 		vk::Semaphore waitSemaphores[]      = {imageAvailableSemaphores_[currentFrame_]};
 		vk::Semaphore signalSemaphores[]    = {renderFinishedSemaphores_[currentFrame_]};
 		vk::PipelineStageFlags waitStages[] = {vk::PipelineStageFlagBits::eColorAttachmentOutput};
@@ -361,6 +486,8 @@ private:
 		} else if (result != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to present swap chain image!");
 		}
+
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffers_[0]);
 
 		currentFrame_ = (currentFrame_ + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
