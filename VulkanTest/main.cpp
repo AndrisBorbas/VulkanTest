@@ -189,6 +189,7 @@ private:
 			.DescriptorPool = imguiPool,
 			.MinImageCount  = 3,
 			.ImageCount     = 3,
+			.MSAASamples    = static_cast<VkSampleCountFlagBits>(msaaSamples_),
 			.Allocator      = nullptr,
 			//.CheckVkResultFn = check_vk_result,
 		};
