@@ -54,6 +54,7 @@ private:
 	GLFWwindow* window_;
 
 	ImGui_ImplVulkanH_Window MainWindowData_;
+	uint32_t QueueFamily_    = (uint32_t)-1;
 	bool show_demo_window    = true;
 	bool show_another_window = false;
 	ImVec4 clear_color       = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -121,6 +122,8 @@ private:
 	vk::DeviceMemory depthImageMemory_;
 	vk::ImageView depthImageView_;
 
+	vk::DescriptorPool imguiPool_;
+
 	size_t currentFrame_ = 0;
 
 	bool framebufferResized_ = false;
@@ -141,6 +144,41 @@ private:
 	{
 		auto* app                = static_cast<HelloTriangleApplication*>(glfwGetWindowUserPointer(window));
 		app->framebufferResized_ = true;
+	}
+
+	void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height)
+	{
+		wd->Surface = surface;
+
+		// Check for WSI support
+		//		VkBool32 res;
+		//		vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice_, QueueFamily_, wd->Surface, &res);
+		//		if (res != VK_TRUE) {
+		//			fprintf(stderr, "Error no WSI support on physical device 0\n");
+		//			exit(-1);
+		//		}
+
+		// Select Surface Format
+		const VkFormat requestSurfaceImageFormat[]     = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM,
+                                                      VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
+		const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+		wd->SurfaceFormat                              = ImGui_ImplVulkanH_SelectSurfaceFormat(
+            physicalDevice_, wd->Surface, requestSurfaceImageFormat,
+            (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
+
+		// Select Present Mode
+
+		VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR,
+											VK_PRESENT_MODE_FIFO_KHR};
+
+		wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(physicalDevice_, wd->Surface, &present_modes[0],
+															  IM_ARRAYSIZE(present_modes));
+		printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
+
+		// Create SwapChain, RenderPass, Framebuffer, etc.
+		// IM_ASSERT(g_MinImageCount >= 2);
+		ImGui_ImplVulkanH_CreateOrResizeWindow(instance_, physicalDevice_, device_, wd, QueueFamily_, nullptr,
+											   width, height, 2);
 	}
 
 	void initImgui()
@@ -166,12 +204,35 @@ private:
 			.pPoolSizes    = poolSizes.data(),
 		};
 
-		vk::DescriptorPool imguiPool;
-		if (device_.createDescriptorPool(&pool_info, nullptr, &imguiPool) != vk::Result::eSuccess) {
+		if (device_.createDescriptorPool(&pool_info, nullptr, &imguiPool_) != vk::Result::eSuccess) {
 			throw std::runtime_error("failed to create imgui descriptor pool!");
 		}
 
 		// 2: initialize imgui library
+
+		QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice_, surface_);
+
+		QueueFamily_ = queueFamilyIndices.graphicsFamily.value();
+
+		int w, h;
+		glfwGetFramebufferSize(window_, &w, &h);
+
+		ImGui_ImplVulkanH_Window* wd                 = &MainWindowData_;
+		wd->Surface                                  = surface_;
+		wd->PresentMode                              = static_cast<VkPresentModeKHR>(preferredPresentMode);
+		const vk::Format requestSurfaceImageFormat[] = {
+			vk::Format::eB8G8R8A8Unorm,
+			vk::Format::eR8G8B8A8Unorm,
+			vk::Format::eB8G8R8Unorm,
+			vk::Format::eR8G8B8Unorm,
+		};
+		const vk::ColorSpaceKHR requestSurfaceColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
+		wd->SurfaceFormat                                = ImGui_ImplVulkanH_SelectSurfaceFormat(
+            physicalDevice_, wd->Surface, reinterpret_cast<const VkFormat*>(requestSurfaceImageFormat),
+            (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), (VkColorSpaceKHR)requestSurfaceColorSpace);
+		//		ImGui_ImplVulkanH_CreateOrResizeWindow(instance_, physicalDevice_, device_, wd, QueueFamily_,
+		// nullptr, 											   w, h, 2);
+		// SetupVulkanWindow(wd, static_cast<VkSurfaceKHR>(surface_), w, h);
 
 		// this initializes the core structures of imgui
 		ImGui::CreateContext();
@@ -183,12 +244,12 @@ private:
 			.Instance       = instance_,
 			.PhysicalDevice = physicalDevice_,
 			.Device         = device_,
-			//.QueueFamily     = g_QueueFamily,
-			.Queue = graphicsQueue_,
+			.QueueFamily    = QueueFamily_,
+			.Queue          = graphicsQueue_,
 			//.PipelineCache   = g_PipelineCache,
-			.DescriptorPool = imguiPool,
-			.MinImageCount  = 3,
-			.ImageCount     = 3,
+			.DescriptorPool = imguiPool_,
+			.MinImageCount  = 2,
+			.ImageCount     = 2,
 			.MSAASamples    = static_cast<VkSampleCountFlagBits>(msaaSamples_),
 			.Allocator      = nullptr,
 			//.CheckVkResultFn = check_vk_result,
@@ -208,7 +269,7 @@ private:
 
 		// add the destroy the imgui created structures
 
-		// device_.destroyDescriptorPool( imguiPool, nullptr);
+		// device_.destroyDescriptorPool( imguiPool_, nullptr);
 		// ImGui_ImplVulkan_Shutdown();
 	}
 
@@ -308,10 +369,6 @@ private:
 			glfwWaitEvents();
 		}
 
-		ImGui_ImplVulkan_SetMinImageCount(3);
-		ImGui_ImplVulkanH_CreateOrResizeWindow(instance_, physicalDevice_, device_, &MainWindowData_,
-											   (uint32_t)-1, nullptr, width, height, 3);
-
 		vkDeviceWaitIdle(device_);
 
 		cleanupSwapChain();
@@ -336,6 +393,10 @@ private:
 		createCommandBuffers(device_, commandBuffers_, swapChainFramebuffers_, commandPool_, renderPass_,
 							 swapchainExtent_, graphicsPipeline_, vertexBuffer_, indexBuffer_,
 							 pipelineLayout_, descriptorSets_, indices_);
+
+		//		ImGui_ImplVulkan_SetMinImageCount(2);
+		//		ImGui_ImplVulkanH_CreateOrResizeWindow(instance_, physicalDevice_, device_, &MainWindowData_,
+		//											   QueueFamily_, nullptr, width, height, 2);
 	}
 
 	void loadModel(const char* filename)
@@ -413,7 +474,7 @@ private:
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+		//		if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
 		{
 			static float f     = 0.0f;
@@ -421,32 +482,34 @@ private:
 
 			ImGui::Begin("Hello, world!");  // Create a window called "Hello, world!" and append into it.
 
-			ImGui::Text("This is some useful text.");  // Display some text (you can use a format strings too)
-			ImGui::Checkbox("Demo Window",
-							&show_demo_window);  // Edit bools storing our window open/close state
-			ImGui::Checkbox("Another Window", &show_another_window);
+			//			ImGui::Text("This is some useful text.");  // Display some text (you can use a format
+			// strings too) 			ImGui::Checkbox("Demo Window", &show_demo_window);
+			// // Edit bools storing our window open/close state 			ImGui::Checkbox("Another Window",
+			// &show_another_window);
+			//
+			//			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);  // Edit 1 float using a slider from 0.0f
+			// to 1.0f 			ImGui::ColorEdit3("clear color", (float*)&clear_color);  // Edit 3 floats
+			// representing a color
+			//
+			//			if (ImGui::Button("Button"))  // Buttons return true when clicked (most widgets return
+			// true when
+			//										  // edited/activated)
+			//				counter++;
+			//			ImGui::SameLine();
+			//			ImGui::Text("counter = %d", counter);
 
-			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);  // Edit 1 float using a slider from 0.0f to 1.0f
-			ImGui::ColorEdit3("clear color", (float*)&clear_color);  // Edit 3 floats representing a color
-
-			if (ImGui::Button("Button"))  // Buttons return true when clicked (most widgets return true when
-										  // edited/activated)
-				counter++;
-			ImGui::SameLine();
-			ImGui::Text("counter = %d", counter);
-
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+			ImGui::Text("Application average %.4f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
 						ImGui::GetIO().Framerate);
 			ImGui::End();
 		}
-		if (show_another_window) {
-			ImGui::Begin("Another Window",
-						 &show_another_window);  // Pass a pointer to our bool variable (the window will have
-												 // a closing button that will clear the bool when clicked)
-			ImGui::Text("Hello from another window!");
-			if (ImGui::Button("Close Me")) show_another_window = false;
-			ImGui::End();
-		}
+		//		if (show_another_window) {
+		//			ImGui::Begin("Another Window",
+		//						 &show_another_window);  // Pass a pointer to our bool variable (the window
+		// will have
+		//												 // a closing button that will clear the bool when
+		// clicked) 			ImGui::Text("Hello from another window!"); 			if (ImGui::Button("Close
+		// Me")) show_another_window = false; 			ImGui::End();
+		//		}
 
 		ImGui::Render();
 
@@ -535,6 +598,9 @@ private:
 	{
 		std::cout << std::endl;
 		cleanupSwapChain();
+
+		device_.destroyDescriptorPool(imguiPool_, nullptr);
+		ImGui_ImplVulkan_Shutdown();
 
 		device_.destroySampler(textureSampler_, nullptr);
 		device_.destroyImageView(textureImageView_, nullptr);
