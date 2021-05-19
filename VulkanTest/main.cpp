@@ -360,6 +360,47 @@ private:
 		device_.destroyDescriptorPool(descriptorPool_, nullptr);
 	}
 
+	void reloadModel(std::string filename)
+	{
+		vkDeviceWaitIdle(device_);
+
+		device_.freeCommandBuffers(commandPool_, static_cast<uint32_t>(commandBuffers_.size()),
+								   commandBuffers_.data());
+
+		for (size_t i = 0; i < swapchainImages_.size(); i++) {
+			device_.destroyBuffer(uniformBuffers_[i], nullptr);
+			device_.freeMemory(uniformBuffersMemory_[i], nullptr);
+		}
+
+		device_.destroyDescriptorPool(descriptorPool_, nullptr);
+
+		loadModel(("assets/models/" + filename + ".obj").c_str());
+		std::tie(colorImage_, colorImageMemory_, colorImageView_) = createColorResources(
+			device_, physicalDevice_, swapchainImageFormat_, swapchainExtent_, msaaSamples_);
+		std::tie(depthImage_, depthImageMemory_, depthImageView_) = createDepthResources(
+			device_, physicalDevice_, swapchainExtent_, graphicsQueue_, commandPool_, msaaSamples_);
+		std::tie(textureImage_, textureImageMemory_) = createTextureImage(
+			device_, physicalDevice_, ("assets/textures/" + filename + ".png").c_str(), STBI_rgb_alpha,
+			mipLevels_, vk::Format::eR8G8B8A8Srgb, graphicsQueue_, commandPool_);
+		textureImageView_ = createImageView(device_, textureImage_, vk::Format::eR8G8B8A8Srgb,
+											vk::ImageAspectFlagBits::eColor, mipLevels_);
+		textureSampler_   = createTextureSampler(device_, physicalDevice_, mipLevels_);
+		createFramebuffers(device_, swapChainFramebuffers_, swapchainImageViews_, colorImageView_,
+						   depthImageView_, renderPass_, swapchainExtent_);
+		createVertexBuffer(device_, physicalDevice_, commandPool_, graphicsQueue_, vertices_, vertexBuffer_,
+						   vertexBufferMemory_);
+		createIndexBuffer(device_, physicalDevice_, commandPool_, graphicsQueue_, indices_, indexBuffer_,
+						  indexBufferMemory_);
+		createUniformBuffers(device_, physicalDevice_, uniformBuffers_, uniformBuffersMemory_,
+							 swapchainImages_);
+		descriptorPool_ = createDescriptorPool(device_, swapchainImages_);
+		createDescriptorSets(device_, descriptorSetLayout_, descriptorSets_, swapchainImages_,
+							 descriptorPool_, uniformBuffers_, textureImageView_, textureSampler_);
+		createCommandBuffers(device_, commandBuffers_, swapChainFramebuffers_, commandPool_, renderPass_,
+							 swapchainExtent_, graphicsPipeline_, vertexBuffer_, indexBuffer_,
+							 pipelineLayout_, descriptorSets_, indices_);
+	}
+
 	void recreateSwapChain()
 	{
 		int width = 0, height = 0;
@@ -411,6 +452,9 @@ private:
 		}
 
 		std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+		vertices_.clear();
+		indices_.clear();
 
 		for (const auto& shape : shapes) {
 			for (const auto& index : shape.mesh.indices) {
@@ -477,29 +521,21 @@ private:
 		//		if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
 
 		{
-			static float f     = 0.0f;
-			static int counter = 0;
+			char buf[128];
 
-			ImGui::Begin("Hello, world!");  // Create a window called "Hello, world!" and append into it.
+			sprintf(buf, "%.4f ms / %.1f FPS###Main", 1000.0f / ImGui::GetIO().Framerate,
+					ImGui::GetIO().Framerate);
 
-			//			ImGui::Text("This is some useful text.");  // Display some text (you can use a format
-			// strings too) 			ImGui::Checkbox("Demo Window", &show_demo_window);
-			// // Edit bools storing our window open/close state 			ImGui::Checkbox("Another Window",
-			// &show_another_window);
-			//
-			//			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);  // Edit 1 float using a slider from 0.0f
-			// to 1.0f 			ImGui::ColorEdit3("clear color", (float*)&clear_color);  // Edit 3 floats
-			// representing a color
-			//
-			//			if (ImGui::Button("Button"))  // Buttons return true when clicked (most widgets return
-			// true when
-			//										  // edited/activated)
-			//				counter++;
-			//			ImGui::SameLine();
-			//			ImGui::Text("counter = %d", counter);
+			ImGui::Begin(buf);
 
-			ImGui::Text("Application average %.4f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
-						ImGui::GetIO().Framerate);
+			if (ImGui::Button("Viking Room")) {
+				reloadModel("viking_room");
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Space Shuttle")) {
+				reloadModel("space_shuttle");
+			}
 			ImGui::End();
 		}
 		//		if (show_another_window) {
