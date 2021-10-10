@@ -338,8 +338,8 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
-cmake-build-debug/
 
+cmake-build-debug/
 cmake-build-release/
 
 Libraries/**/[Dd]oc*
@@ -354,3 +354,5 @@ Libraries/tinyobjloader-master
 
 Libraries/stb-master
 !Libraries/stb-master/stb_image.h
+
+out/

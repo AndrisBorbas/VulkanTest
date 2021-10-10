@@ -508,7 +508,7 @@ private:
 		}
 
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
-		if (imagesInFlight_[imageIndex] != VK_NULL_HANDLE) {
+		if (imagesInFlight_[imageIndex]) {
 			device_.waitForFences(1, &imagesInFlight_[imageIndex], VK_TRUE, UINT64_MAX);
 		}
 		// Mark the image as now being in use by this frame

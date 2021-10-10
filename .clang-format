@@ -1,14 +1,16 @@
 ---
 Language: Cpp
 BasedOnStyle: Chromium
+Standard: c++20
 AccessModifierOffset: -4
-AlignConsecutiveAssignments: true
-AllowShortIfStatementsOnASingleLine: WithoutElse
+AlignAfterOpenBracket: DontAlign
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: false
-BraceWrapping: 
+BraceWrapping:
   AfterCaseLabel: false
   AfterClass: true
-  AfterControlStatement: false
+  AfterControlStatement: true
   AfterEnum: true
   AfterFunction: true
   AfterNamespace: true
@@ -16,18 +18,30 @@ BraceWrapping:
   AfterUnion: true
   AfterExternBlock: false
   BeforeCatch: false
-  BeforeElse: false
-  SplitEmptyFunction: false
-  SplitEmptyRecord: false
-  SplitEmptyNamespace: false
+  BeforeElse: true
+  BeforeLambdaBody: true
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
 BreakBeforeBraces: Custom
 BreakBeforeBinaryOperators: NonAssignment
-ColumnLimit: 110
+ColumnLimit: 128
+EmptyLineBeforeAccessModifier: LogicalBlock
 IndentCaseLabels: true
 IndentWidth: 4
+MaxEmptyLinesToKeep: 2
+SortIncludes: false
 TabWidth: 4
-UseTab: ForContinuationAndIndentation
+UseTab: Always
 DerivePointerAlignment: false
 PointerAlignment: Left
-Standard: c++20
-...
+# ReferenceAlignment: Left
+# SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
+SpacesInAngles: true
+SpacesInConditionalStatement: true
+SpacesInParentheses: true
+SpacesBeforeTrailingComments: 1
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: 1
